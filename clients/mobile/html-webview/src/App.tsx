@@ -1,9 +1,9 @@
 import React from 'react';
-import { Editor } from '../../../../shared/src/components/Editor';
+import { Editor } from 'markdown-editor-core';
 
 const App = () => {
     return (
-        <Editor/>
+        <Editor />
     );
 };
 

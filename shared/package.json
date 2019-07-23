@@ -1,14 +1,16 @@
 {
   "name": "markdown-editor-core",
-  "version": "0.1.0",
+  "version": "0.1.5",
   "private": false,
   "dependencies": {
+    "react": "^16.8.6",
+    "react-dom": "^16.8.6"
+  },
+  "devDependencies": {
     "@types/jest": "24.0.15",
     "@types/node": "12.6.8",
     "@types/react": "16.8.23",
     "@types/react-dom": "16.8.4",
-    "react": "^16.8.6",
-    "react-dom": "^16.8.6",
     "react-scripts": "3.0.1",
     "typescript": "3.5.3"
   },
@@ -33,6 +35,9 @@
       "last 1 safari version"
     ]
   },
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
   "files": [
     "dist",
     "README.md"
@@ -40,5 +45,6 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/gperl27/markdown-editor"
-  }
+  },
+  "license": "MIT"
 }

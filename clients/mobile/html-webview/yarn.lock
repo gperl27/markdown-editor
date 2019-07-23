@@ -5976,6 +5976,14 @@ map-visit@^1.0.0:
   dependencies:
     object-visit "^1.0.0"
 
+markdown-editor-core@^0.1.5:
+  version "0.1.5"
+  resolved "https://registry.yarnpkg.com/markdown-editor-core/-/markdown-editor-core-0.1.5.tgz#4766c40bc61bdfc31b5be15da6c55137d2b66a44"
+  integrity sha512-jMh8lGYjx4Dr2vTx+f0mYYAmliixitpg9kKa2NB6Fzwv6/0+Mbi/ahxtc6n3afN15xW/3aezWeQY0HfE/ymYxw==
+  dependencies:
+    react "^16.8.6"
+    react-dom "^16.8.6"
+
 md5.js@^1.3.4:
   version "1.3.5"
   resolved "https://registry.yarnpkg.com/md5.js/-/md5.js-1.3.5.tgz#b5d07b8e3216e3e27cd728d72f70d1e6a342005f"
