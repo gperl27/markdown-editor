@@ -33,7 +33,14 @@ export const Editor = (props: Props) => {
     const editorDidMount = (editor: monacoEditor.editor.IStandaloneCodeEditor, monaco: typeof monacoEditor) => {
         editor.focus();
 
-        editor.addCommand(monaco.KeyMod.chord(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KEY_S, monaco.KeyCode.Unknown), () => {
+        editor.addCommand(monaco.KeyCode.Tab, () => {
+            alert('my command is executing!');
+        });
+
+        // @ts-ignore
+        editor.addCommand(monaco.KeyMod.chord(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KEY_S), () => {
+            console.log('saving');
+            alert('my command is saving!!');
             props.onSave && props.onSave(COMMAND.SAVE);
         });
 
