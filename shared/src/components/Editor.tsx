@@ -19,6 +19,10 @@ interface Commands<T = {}> {
 interface Props extends ComponentProps<typeof MonacoEditor>, Commands {
 }
 
+const defaultOptions: monacoEditor.editor.IEditorOptions = {
+    wordWrap: "on"
+};
+
 export const Editor = (props: Props) => {
     const [language, setLanguage] = React.useState(props.language || primaryLanguage);
     const [theme, setTheme] = React.useState(props.theme || defaultTheme);
@@ -43,6 +47,7 @@ export const Editor = (props: Props) => {
     return (
         <MonacoEditor
             {...props}
+            options={{...defaultOptions, ...props.options}}
             language={language}
             theme={theme}
             value={value}

@@ -7,7 +7,13 @@ const App = () => {
      window.ReactNativeWebView && window.ReactNativeWebView.postMessage("Hello!");
   };
 
-  return <Editor onSave={onSave} />;
+  const onChange = (value: string) => {
+    const encodedMessage = JSON.stringify({ event: 'change', value });
+    // @ts-ignore
+    window.ReactNativeWebView && window.ReactNativeWebView.postMessage(encodedMessage);
+  };
+
+  return <Editor onChange={onChange} onSave={onSave} />;
 };
 
 export default App;
