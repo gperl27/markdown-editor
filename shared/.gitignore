@@ -22,4 +22,33 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-dist/
+#output
+dist/*
+!components/*/dist/
+dist-legacy/
+eslint-report.html
+
+#distrubution
+distribution/
+
+artifacts/
+bit-*.tar.gz
+tmp/
+bin/node
+nodeBin
+
+# bit directories
+.bit
+
+# DS_Store
+.DS_Store
+
+#vscode history
+.history
+
+#gitbook
+_book
+
+# pkg releases
+releases/
+bin/bit
