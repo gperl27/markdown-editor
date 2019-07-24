@@ -39,6 +39,7 @@ nodeBin
 
 # bit directories
 .bit
+.bitmap
 
 # DS_Store
 .DS_Store

@@ -37,8 +37,7 @@ export const Editor = (props: Props) => {
             alert('my command is executing!');
         });
 
-        // @ts-ignore
-        editor.addCommand(monaco.KeyMod.chord(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KEY_S), () => {
+        editor.addCommand(monaco.KeyMod.chord(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KEY_S, monaco.KeyCode.Unknown), () => {
             console.log('saving');
             alert('my command is saving!!');
             props.onSave && props.onSave(COMMAND.SAVE);
