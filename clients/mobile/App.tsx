@@ -1,17 +1,20 @@
-import React, { Fragment, useState } from "react";
+import React, { Fragment, RefObject, useRef, useState } from "react";
 import {
   SafeAreaView,
   StyleSheet,
   StatusBar,
   View,
   NativeSyntheticEvent,
-  ScrollView
+  ScrollView,
+  Text,
+  Button
 } from "react-native";
 import { WebView } from "react-native-webview";
 import StaticServer from "react-native-static-server";
 import RNFS from "react-native-fs";
 import Markdown from "react-native-simple-markdown";
 import { WebViewMessage } from "react-native-webview/lib/WebViewTypes";
+import { iOSUIKit } from "react-native-typography";
 
 let path = RNFS.MainBundlePath + "/build";
 let server = new StaticServer(8080, path, { localOnly: true });
@@ -21,23 +24,43 @@ server.start().then((url: string) => {
 });
 
 const App = () => {
+  const webviewRef = useRef<WebView>();
   const [value, setValue] = useState("");
+  const [showMarkdownPreview, setShowMarkdownPreview] = useState(false);
 
   const onMessage = (webviewEvent: NativeSyntheticEvent<WebViewMessage>) => {
     const decodedMessage: { event: string; value: string } = JSON.parse(
       webviewEvent.nativeEvent.data
     );
 
-    setValue(decodedMessage.value);
+    if (decodedMessage.event === "change") {
+      setValue(decodedMessage.value);
+    }
+
+    if (decodedMessage.event === "toggle_preview") {
+      setShowMarkdownPreview(!showMarkdownPreview);
+
+      if (webviewRef.current) {
+        webviewRef.current.forceUpdate();
+      }
+    }
   };
 
   return (
     <Fragment>
       <SafeAreaView style={{ flex: 1 }}>
         <StatusBar barStyle="dark-content" />
+        <View>
+          <Text>Top UI Bar Here</Text>
+          <Button
+            title={"click me"}
+            onPress={() => setShowMarkdownPreview(!showMarkdownPreview)}
+          />
+        </View>
         <View style={styles.container}>
           <View style={styles.webViewContainer}>
             <WebView
+              ref={webviewRef as RefObject<WebView>}
               keyboardDisplayRequiresUserAction={false}
               scrollEnabled={false}
               showsHorizontalScrollIndicator={false}
@@ -52,11 +75,13 @@ const App = () => {
               onMessage={onMessage}
             />
           </View>
-          <View style={styles.markdownContainer}>
-            <ScrollView>
-              <Markdown>{value}</Markdown>
-            </ScrollView>
-          </View>
+          {showMarkdownPreview && (
+            <View style={styles.markdownContainer}>
+              <ScrollView>
+                <Markdown styles={markdownStyles}>{value}</Markdown>
+              </ScrollView>
+            </View>
+          )}
         </View>
       </SafeAreaView>
     </Fragment>
@@ -69,13 +94,19 @@ const styles = StyleSheet.create({
     flexDirection: "row"
   },
   webViewContainer: {
-    flex: 2
-    // width: "60%"
+    flex: 1,
+    backgroundColor: "blue"
   },
   markdownContainer: {
     flex: 1
-    // width: "40%"
   }
+});
+
+const markdownStyles = StyleSheet.create({
+  heading1: iOSUIKit.largeTitleEmphasizedObject,
+  heading2: iOSUIKit.title3EmphasizedObject,
+  heading3: iOSUIKit.title3Object,
+  body: iOSUIKit.bodyObject
 });
 
 export default App;

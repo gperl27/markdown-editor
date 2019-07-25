@@ -13,7 +13,13 @@ const App = () => {
     window.ReactNativeWebView && window.ReactNativeWebView.postMessage(encodedMessage);
   };
 
-  return <Editor onChange={onChange} onSave={onSave} />;
+  const onTogglePreview = () => {
+    const encodedMessage = JSON.stringify({ event: 'toggle_preview' });
+    // @ts-ignore
+    window.ReactNativeWebView && window.ReactNativeWebView.postMessage(encodedMessage);
+  };
+
+  return <Editor onChange={onChange} onSave={onSave} onTogglePreview={onTogglePreview} />;
 };
 
 export default App;

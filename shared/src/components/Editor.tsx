@@ -3,24 +3,28 @@ import MonacoEditor from 'react-monaco-editor';
 import * as monacoEditor from 'monaco-editor/esm/vs/editor/editor.api';
 import { ComponentProps } from 'react';
 
+export enum COMMAND {
+    SAVE = 'save',
+    TOGGLE_PREVIEW = 'toggle_preview',
+    TOGGLE_FOCUS_MODE = 'toggle_focus_mode',
+}
+
+export type Command<T> = (eventName: COMMAND, data?: T) => void;
+
+export interface Commands<T = {}> {
+    onSave?: Command<T>;
+    onTogglePreview?: Command<T>
+    onToggleFocusMode?: Command<T>
+}
+
+export interface Props extends ComponentProps<typeof MonacoEditor>, Commands {
+}
+
 const primaryLanguage = 'markdown';
 const defaultTheme = 'vs-dark';
-
-enum COMMAND {
-    SAVE = 'save'
-}
-
-type Command<T> = (eventName: COMMAND, data?: T) => void;
-
-interface Commands<T = {}> {
-   onSave?: Command<T>
-}
-
-interface Props extends ComponentProps<typeof MonacoEditor>, Commands {
-}
-
 const defaultOptions: monacoEditor.editor.IEditorOptions = {
-    wordWrap: "on"
+    automaticLayout: true,
+    wordWrap: 'on',
 };
 
 export const Editor = (props: Props) => {
@@ -41,13 +45,26 @@ export const Editor = (props: Props) => {
             props.onSave && props.onSave(COMMAND.SAVE);
         });
 
+        editor.addCommand(monaco.KeyMod.chord(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KEY_R, monaco.KeyCode.Unknown), () => {
+            props.onTogglePreview && props.onTogglePreview(COMMAND.TOGGLE_PREVIEW);
+        });
+
+        // TEMP UNTIL IPAD GETS FIXED
+        editor.addCommand(monaco.KeyMod.chord(monaco.KeyMod.Shift | monaco.KeyCode.KEY_R, monaco.KeyCode.Unknown), () => {
+            props.onTogglePreview && props.onTogglePreview(COMMAND.TOGGLE_PREVIEW);
+        });
+
+        editor.addCommand(monaco.KeyMod.chord(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KEY_D, monaco.KeyCode.Unknown), () => {
+            props.onToggleFocusMode && props.onToggleFocusMode(COMMAND.TOGGLE_FOCUS_MODE);
+        });
+
         props.editorDidMount && props.editorDidMount(editor, monaco);
     };
 
     return (
         <MonacoEditor
             {...props}
-            options={{...defaultOptions, ...props.options}}
+            options={{ ...defaultOptions, ...props.options }}
             language={language}
             theme={theme}
             value={value}
