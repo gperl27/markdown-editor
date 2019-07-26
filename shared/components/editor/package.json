@@ -1,6 +1,6 @@
 {
   "name": "@bit/gperl27.markdown-editor.editor",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "homepage": "https://bit.dev/gperl27/markdown-editor/editor",
   "main": "src/components/Editor.tsx",
   "dependencies": {
