@@ -103,7 +103,11 @@ const styles = StyleSheet.create({
 });
 
 const markdownStyles = StyleSheet.create({
-  heading1: iOSUIKit.largeTitleEmphasizedObject,
+  heading1: {
+    ...iOSUIKit.largeTitleEmphasizedObject,
+    marginBottom: iOSUIKit.largeTitleEmphasizedObject.fontSize * 0.3,
+    marginTop: iOSUIKit.largeTitleEmphasizedObject.fontSize * 0.3,
+  },
   heading2: iOSUIKit.title3EmphasizedObject,
   heading3: iOSUIKit.title3Object,
   body: iOSUIKit.bodyObject

@@ -41,16 +41,23 @@ export const Editor = (props: Props) => {
     const editorDidMount = (editor: monacoEditor.editor.IStandaloneCodeEditor, monaco: typeof monacoEditor) => {
         editor.focus();
 
+        editor.addCommand(monaco.KeyMod.chord(monaco.KeyMod.Alt | monaco.KeyCode.KEY_S, monaco.KeyCode.Unknown), () => {
+            props.onSave && props.onSave(COMMAND.SAVE);
+        });
+
+        editor.addCommand(monaco.KeyMod.chord(monaco.KeyMod.Alt | monaco.KeyCode.KEY_R, monaco.KeyCode.Unknown), () => {
+            props.onTogglePreview && props.onTogglePreview(COMMAND.TOGGLE_PREVIEW);
+        });
+
+        editor.addCommand(monaco.KeyMod.chord(monaco.KeyMod.Alt | monaco.KeyCode.KEY_D, monaco.KeyCode.Unknown), () => {
+            props.onToggleFocusMode && props.onToggleFocusMode(COMMAND.TOGGLE_FOCUS_MODE);
+        });
+
         editor.addCommand(monaco.KeyMod.chord(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KEY_S, monaco.KeyCode.Unknown), () => {
             props.onSave && props.onSave(COMMAND.SAVE);
         });
 
         editor.addCommand(monaco.KeyMod.chord(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KEY_R, monaco.KeyCode.Unknown), () => {
-            props.onTogglePreview && props.onTogglePreview(COMMAND.TOGGLE_PREVIEW);
-        });
-
-        // TEMP UNTIL IPAD GETS FIXED
-        editor.addCommand(monaco.KeyMod.chord(monaco.KeyMod.Shift | monaco.KeyCode.KEY_R, monaco.KeyCode.Unknown), () => {
             props.onTogglePreview && props.onTogglePreview(COMMAND.TOGGLE_PREVIEW);
         });
 
