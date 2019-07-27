@@ -1,4 +1,9 @@
-import React, { Fragment, useState, useReducer } from "react";
+import React, {
+  useState,
+  useReducer,
+  useRef,
+  MutableRefObject,
+} from "react";
 import {
   SafeAreaView,
   StyleSheet,
@@ -12,9 +17,9 @@ import {
 import { WebView } from "react-native-webview";
 import Markdown from "react-native-markdown-renderer";
 import { WebViewMessage } from "react-native-webview/lib/WebViewTypes";
-import { iOSUIKit } from "react-native-typography";
 import { useLocalServer } from "./src/lib/localStaticServer";
 import { iOSMarkdownStyleFactory } from "./src/lib/theme";
+import { useAsyncStorage } from "@react-native-community/async-storage";
 
 enum ActionType {
   SHOW_PREVIEW_ONLY,
@@ -74,9 +79,17 @@ const reducer = (state: State, action: Action): State => {
 };
 
 const App = () => {
-  const { uri } = useLocalServer();
+  const [firstLoad, setFirstLoad] = useState(true);
   const [value, setValue] = useState("");
+  const [position, setPosition] = useState<any | null>(null);
   const [state, dispatch] = useReducer(reducer, initialState);
+  const { uri } = useLocalServer();
+  const ref = useRef<WebView>();
+  const { getItem, setItem, removeItem } = useAsyncStorage("editorState");
+
+  const writeItemToStorage = async (newValue: string) => {
+    await setItem(newValue);
+  };
 
   const onMessage = (webviewEvent: NativeSyntheticEvent<WebViewMessage>) => {
     const decodedMessage: { event: string; value: string } = JSON.parse(
@@ -84,12 +97,41 @@ const App = () => {
     );
 
     if (decodedMessage.event === "change") {
+      // console.log(decodedMessage.value, "ON CHANGE FROM EDITOR");
       setValue(decodedMessage.value);
+    }
+
+    if (decodedMessage.event === "editor_state") {
+      // console.log(decodedMessage.value, "editor state!");
+      if (
+        decodedMessage.value !==
+        '{"position":{"lineNumber":1,"column":1},"secondaryPositions":[],"reason":1,"source":"model"}'
+      ) {
+        setPosition(decodedMessage.value);
+      } else {
+        console.log("YOU TRIED TO RESET");
+      }
     }
 
     if (decodedMessage.event === "toggle_preview") {
       dispatch({ type: ActionType.TOGGLE_SHOW_PREVIEW });
     }
+
+    if (decodedMessage.event === "debug") {
+      console.log(decodedMessage.value);
+    }
+  };
+
+  const onShowEditorOnly = () => {
+    dispatch({ type: ActionType.SHOW_EDITOR_ONLY });
+  };
+
+  const onShowPreviewOnly = () => {
+    dispatch({ type: ActionType.SHOW_PREVIEW_ONLY });
+
+    writeItemToStorage(
+      JSON.stringify({ value, position: JSON.parse(position) })
+    ).catch(e => console.log(e, "error writing to editor state cache"));
   };
 
   if (!uri) {
@@ -100,56 +142,78 @@ const App = () => {
     );
   }
 
+  const getInjectedStr = async () => {
+    const editorCache = await getItem();
+    console.log(editorCache, "EDITOR CACHE");
+
+    if (!editorCache) {
+      return null;
+    }
+
+    return `
+        const updateEvent = new CustomEvent("updateEditorState", { detail: ${JSON.stringify(
+          editorCache
+        )} });
+        window.dispatchEvent(updateEvent);
+        true;
+    `;
+  };
+
   return (
-    <Fragment>
-      <SafeAreaView style={styles.safeAreaView}>
-        <StatusBar barStyle="dark-content" />
+    <SafeAreaView style={styles.safeAreaView}>
+      <StatusBar barStyle="dark-content" />
+      <View>
+        <Text>Top UI Bar Here</Text>
         <View>
-          <Text>Top UI Bar Here</Text>
-          <View>
-            <Button
-              title={"Show Editor Only"}
-              onPress={() => dispatch({ type: ActionType.SHOW_EDITOR_ONLY })}
-            />
-            <Button
-              title={"Show Both"}
-              onPress={() => dispatch({ type: ActionType.SHOW_BOTH })}
-            />
-            <Button
-              title={"Preview Only"}
-              onPress={() => dispatch({ type: ActionType.SHOW_PREVIEW_ONLY })}
-            />
+          <Button title={"Show Editor Only"} onPress={onShowEditorOnly} />
+          <Button
+            title={"Show Both"}
+            onPress={() => dispatch({ type: ActionType.SHOW_BOTH })}
+          />
+          <Button title={"Preview Only"} onPress={onShowPreviewOnly} />
+        </View>
+      </View>
+      <View style={styles.container}>
+        <View style={state.showEditor ? styles.webViewContainer : {}}>
+          <WebView
+            ref={ref as MutableRefObject<WebView>}
+            hideKeyboardAccessoryView={true}
+            keyboardDisplayRequiresUserAction={false}
+            scrollEnabled={false}
+            showsHorizontalScrollIndicator={false}
+            showsVerticalScrollIndicator={false}
+            bounces={false}
+            overScrollMode="never"
+            source={{ uri }}
+            javaScriptEnabled={true}
+            originWhitelist={["*"]}
+            allowFileAccess={true}
+            useWebKit={true}
+            onMessage={onMessage}
+            onLoad={async () => {
+              if (ref && ref.current) {
+                if (firstLoad) {
+                  await removeItem();
+                  setFirstLoad(false);
+                }
+                const injected = await getInjectedStr();
+
+                if (injected) {
+                  ref.current.injectJavaScript(injected);
+                }
+              }
+            }}
+          />
+        </View>
+        {state.showMarkdownPreview && (
+          <View style={styles.markdownContainer}>
+            <ScrollView>
+              <Markdown style={markdownStyles}>{value}</Markdown>
+            </ScrollView>
           </View>
-        </View>
-        <View style={styles.container}>
-          {state.showEditor && (
-            <View style={styles.webViewContainer}>
-              <WebView
-                keyboardDisplayRequiresUserAction={false}
-                scrollEnabled={false}
-                showsHorizontalScrollIndicator={false}
-                showsVerticalScrollIndicator={false}
-                bounces={false}
-                overScrollMode="never"
-                source={{ uri }}
-                javaScriptEnabled={true}
-                originWhitelist={["*"]}
-                allowFileAccess={true}
-                useWebKit={true}
-                onMessage={onMessage}
-              />
-            </View>
-          )}
-          {state.showMarkdownPreview && (
-            <View style={styles.markdownContainer}>
-              <ScrollView>
-                <Markdown style={markdownStyles}>{value}</Markdown>
-              </ScrollView>
-            </View>
-          )}
-        </View>
-      </SafeAreaView>
-    </Fragment>
+        )}
+      </View>
+    </SafeAreaView>
   );
 };
 

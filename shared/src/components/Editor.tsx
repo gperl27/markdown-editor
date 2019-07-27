@@ -68,6 +68,7 @@ export const Editor = (props: Props) => {
         props.editorDidMount && props.editorDidMount(editor, monaco);
     };
 
+
     return (
         <MonacoEditor
             {...props}

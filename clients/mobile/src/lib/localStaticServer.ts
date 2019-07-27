@@ -33,8 +33,6 @@ export const useLocalServer = () => {
   const server = new LocalStaticServer();
 
   useEffect(() => {
-    console.log("this ran");
-
     server
       .run()
       .then((url: string) => setUri(url))
