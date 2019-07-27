@@ -10,10 +10,11 @@ import {
   Button
 } from "react-native";
 import { WebView } from "react-native-webview";
-import Markdown from "react-native-simple-markdown";
+import Markdown from "react-native-markdown-renderer";
 import { WebViewMessage } from "react-native-webview/lib/WebViewTypes";
 import { iOSUIKit } from "react-native-typography";
 import { useLocalServer } from "./src/lib/localStaticServer";
+import { iOSMarkdownStyleFactory } from "./src/lib/theme";
 
 enum ActionType {
   SHOW_PREVIEW_ONLY,
@@ -142,7 +143,7 @@ const App = () => {
           {state.showMarkdownPreview && (
             <View style={styles.markdownContainer}>
               <ScrollView>
-                <Markdown styles={markdownStyles}>{value}</Markdown>
+                <Markdown style={markdownStyles}>{value}</Markdown>
               </ScrollView>
             </View>
           )}
@@ -170,14 +171,10 @@ const styles = StyleSheet.create({
 });
 
 const markdownStyles = StyleSheet.create({
-  heading1: {
-    ...iOSUIKit.largeTitleEmphasizedObject,
-    marginBottom: iOSUIKit.largeTitleEmphasizedObject.fontSize! * 0.3,
-    marginTop: iOSUIKit.largeTitleEmphasizedObject.fontSize! * 0.3
+  root: {
+    padding: "5%"
   },
-  heading2: iOSUIKit.title3EmphasizedObject,
-  heading3: iOSUIKit.title3Object,
-  body: iOSUIKit.bodyObject
+  ...iOSMarkdownStyleFactory()
 });
 
 export default App;
