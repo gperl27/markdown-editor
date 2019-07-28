@@ -1,9 +1,4 @@
-import React, {
-  useState,
-  useReducer,
-  useRef,
-  MutableRefObject,
-} from "react";
+import React, { useState, useReducer, useRef, MutableRefObject } from "react";
 import {
   SafeAreaView,
   StyleSheet,
@@ -79,13 +74,12 @@ const reducer = (state: State, action: Action): State => {
 };
 
 const App = () => {
-  const [firstLoad, setFirstLoad] = useState(true);
   const [value, setValue] = useState("");
   const [position, setPosition] = useState<any | null>(null);
   const [state, dispatch] = useReducer(reducer, initialState);
   const { uri } = useLocalServer();
   const ref = useRef<WebView>();
-  const { getItem, setItem, removeItem } = useAsyncStorage("editorState");
+  const { getItem, setItem } = useAsyncStorage("editorState");
 
   const writeItemToStorage = async (newValue: string) => {
     await setItem(newValue);
@@ -97,20 +91,11 @@ const App = () => {
     );
 
     if (decodedMessage.event === "change") {
-      // console.log(decodedMessage.value, "ON CHANGE FROM EDITOR");
       setValue(decodedMessage.value);
     }
 
-    if (decodedMessage.event === "editor_state") {
-      // console.log(decodedMessage.value, "editor state!");
-      if (
-        decodedMessage.value !==
-        '{"position":{"lineNumber":1,"column":1},"secondaryPositions":[],"reason":1,"source":"model"}'
-      ) {
-        setPosition(decodedMessage.value);
-      } else {
-        console.log("YOU TRIED TO RESET");
-      }
+    if (decodedMessage.event === "editor_cursor_position") {
+      setPosition(decodedMessage.value);
     }
 
     if (decodedMessage.event === "toggle_preview") {
@@ -129,9 +114,9 @@ const App = () => {
   const onShowPreviewOnly = () => {
     dispatch({ type: ActionType.SHOW_PREVIEW_ONLY });
 
-    writeItemToStorage(
-      JSON.stringify({ value, position: JSON.parse(position) })
-    ).catch(e => console.log(e, "error writing to editor state cache"));
+    writeItemToStorage(JSON.stringify({ value, position })).catch(e =>
+      console.log(e, "error writing to editor state cache")
+    );
   };
 
   if (!uri) {
@@ -143,18 +128,20 @@ const App = () => {
   }
 
   const getInjectedStr = async () => {
-    const editorCache = await getItem();
-    console.log(editorCache, "EDITOR CACHE");
+    // await removeItem();
+    const cachedEditorState = await getItem();
 
-    if (!editorCache) {
+    if (!cachedEditorState) {
       return null;
     }
 
+    const editorData = JSON.parse(cachedEditorState);
+
     return `
-        const updateEvent = new CustomEvent("updateEditorState", { detail: ${JSON.stringify(
-          editorCache
-        )} });
-        window.dispatchEvent(updateEvent);
+        window.MarkdownEditor = { 
+          value: ${JSON.stringify(editorData.value)},
+          position: ${JSON.stringify(editorData.position)},
+        }; 
         true;
     `;
   };
@@ -190,17 +177,15 @@ const App = () => {
             allowFileAccess={true}
             useWebKit={true}
             onMessage={onMessage}
-            onLoad={async () => {
-              if (ref && ref.current) {
-                if (firstLoad) {
-                  await removeItem();
-                  setFirstLoad(false);
-                }
-                const injected = await getInjectedStr();
+            onLoadStart={async () => {
+              const injected = await getInjectedStr();
 
-                if (injected) {
-                  ref.current.injectJavaScript(injected);
-                }
+              if (!injected) {
+                return;
+              }
+
+              if (ref && ref.current) {
+                ref.current.injectJavaScript(injected);
               }
             }}
           />

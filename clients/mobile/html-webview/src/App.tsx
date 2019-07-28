@@ -1,4 +1,4 @@
-import React, { useEffect, ComponentProps, useState, useCallback } from 'react';
+import React, { ComponentProps, useEffect, useState } from 'react';
 import { Editor } from "@bit/gperl27.markdown-editor.editor";
 
 type Parameters<T> = T extends (...args: infer T) => any ? T : never;
@@ -8,8 +8,7 @@ type onEditorDidMount = (
 ) => void;
 
 const App = () => {
-  const [editorRef, setEditorRef] = useState<Editor | undefined>(undefined);
-  const [capturedEditorState, setCapturedEventValue] = useState<string | undefined>(undefined);
+  const [editorRef, setEditorRef] = useState<Editor | undefined>(undefined)
 
   const onSave = () => {
     const encodedMessage = JSON.stringify({
@@ -34,13 +33,6 @@ const App = () => {
 
     // @ts-ignore
     window.ReactNativeWebView && window.ReactNativeWebView.postMessage(encodedMessage);
-
-    if (editorRef && capturedEditorState) {
-      const { position } = JSON.parse(capturedEditorState);
-      logDebug("RESTORE VIEW AFTER CHANGE")
-
-      editorRef.restoreViewState(position);
-    }
   };
 
   const onTogglePreview = () => {
@@ -50,50 +42,39 @@ const App = () => {
   };
 
   const onDidChangeCursorPosition = (e: any) => {
-    const encodedMessage = JSON.stringify({ event: "editor_state", value: JSON.stringify(e) });
+    const encodedMessage = JSON.stringify({ event: "editor_cursor_position", value: e });
     // @ts-ignore
     window.ReactNativeWebView && window.ReactNativeWebView.postMessage(encodedMessage);
   };
 
   const onEditorDidMount: onEditorDidMount = editor => {
-    editor.onDidChangeCursorPosition(onDidChangeCursorPosition)
+    editor.onDidChangeCursorPosition(onDidChangeCursorPosition);
 
     setEditorRef(editor);
   };
 
-  const onSetValue = (event: CustomEvent<string>) => {
-    logDebug(event.detail)
-    setCapturedEventValue(event.detail);
-  };
-
   useEffect(() => {
-    if (editorRef && capturedEditorState) {
-      const { value, position } = JSON.parse(capturedEditorState);
+    if (editorRef) {
+      // @ts-ignore
+      logDebug(window.MarkdownEditor)
 
-      if (value) {
-        editorRef.setValue(value);
+      // @ts-ignore
+      if (window.MarkdownEditor) {
+        // @ts-ignore
+        if (window.MarkdownEditor.value) {
+          // @ts-ignore
+          editorRef.setValue(window.MarkdownEditor.value);
+        }
+
+        // @ts-ignore
+          if (window.MarkdownEditor.position && window.MarkdownEditor.position.position) {
+            // @ts-ignore
+            editorRef.setPosition(window.MarkdownEditor.position.position);
+          }
       }
-
-      // if (position) {
-      //   editorRef.restoreViewState(position);
-      // }
     }
-  }, [capturedEditorState, editorRef]);
 
-  useEffect(() => {
-    window.addEventListener(
-      "updateEditorState",
-      onSetValue as EventListener,
-      false
-    );
-
-    return () => {
-      window.removeEventListener(
-          "updateEditorState",
-          onSetValue as EventListener
-      );
-    }
-  }, []);
+  }, [editorRef])
 
   return (
     <Editor
