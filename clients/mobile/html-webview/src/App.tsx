@@ -12,9 +12,9 @@ const App = () => {
 
   const onSave = () => {
     const encodedMessage = JSON.stringify({
-      event: "change",
-      value: "hello mother"
+      event: "save"
     });
+
     // @ts-ignore
     window.ReactNativeWebView && window.ReactNativeWebView.postMessage(encodedMessage);
   };
@@ -74,7 +74,8 @@ const App = () => {
       }
     }
 
-  }, [editorRef])
+      // @ts-ignore
+  }, [editorRef, window.MarkdownEditor])
 
   return (
     <Editor

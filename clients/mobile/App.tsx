@@ -6,14 +6,14 @@ import React, {
   useEffect
 } from "react";
 import {
-  SafeAreaView,
-  StyleSheet,
-  StatusBar,
-  View,
-  NativeSyntheticEvent,
-  ScrollView,
-  Text,
-  Button
+    SafeAreaView,
+    StyleSheet,
+    StatusBar,
+    View,
+    NativeSyntheticEvent,
+    ScrollView,
+    Text,
+    Button, FlatList
 } from "react-native";
 import { WebView } from "react-native-webview";
 import Markdown from "react-native-markdown-renderer";
@@ -74,7 +74,7 @@ const reducer = (state: State, action: Action): State => {
         showMarkdownPreview: !state.showMarkdownPreview
       };
     default:
-      console.log("Improper type dispatched, restting");
+      console.log("Improper type dispatched, resetting");
 
       return initialState;
   }
@@ -83,6 +83,7 @@ const reducer = (state: State, action: Action): State => {
 const App = () => {
   const [value, setValue] = useState("");
   const [position, setPosition] = useState<any | null>(null);
+  const [files, setFiles] = useState([])
   const [state, dispatch] = useReducer(reducer, initialState);
   const { uri } = useLocalServer();
   const ref = useRef<WebView>();
@@ -112,6 +113,19 @@ const App = () => {
     if (decodedMessage.event === "debug") {
       console.log(decodedMessage.value);
     }
+
+    if (decodedMessage.event === "save") {
+          var path = RNFS.DocumentDirectoryPath + '/test2.md';
+
+// write the file
+          RNFS.writeFile(path, value, 'utf8')
+              .then((success) => {
+                  console.log('FILE WRITTEN!');
+              })
+              .catch((err) => {
+                  console.log(err.message);
+              });
+      }
   };
 
   const onShowEditorOnly = () => {
@@ -145,33 +159,51 @@ const App = () => {
     `;
   };
 
+  const sendToEditor = () => {
+      const injected = `
+        window.MarkdownEditor = { 
+          value: ${JSON.stringify(value)}
+        }; 
+        true;
+    `;
+
+      if (ref && ref.current) {
+          console.log('send to editor')
+          ref.current.injectJavaScript(injected)
+      }
+  }
+
+  const onGetFileContents = (path: string) => () => {
+   RNFS.readFile(path)
+       .then(result => {
+         setValue(result);
+         sendToEditor();
+       })
+  }
+
   useEffect(() => {
     // require the module
 
     // get a list of files and directories in the main bundle
     RNFS.readDir(RNFS.DocumentDirectoryPath)
       .then(result => {
-        console.log("GOT RESULT", result);
+          console.log("GOT RESULT", result);
+          setFiles(result);
 
-        // stat the first file
-        return Promise.all([RNFS.stat(result[0].path), result[0].path]);
-      })
-      .then(statResult => {
-        if (statResult[0].isFile()) {
-          // if we have a file, read it
-          return RNFS.readFile(statResult[1], "utf8");
-        }
+          return result;
 
-        return "no file";
-      })
-      .then(contents => {
-        // log the file contents
-        console.log(contents);
       })
       .catch(err => {
         console.log(err.message, err.code);
       });
   }, []);
+
+
+  const renderFile = (item) => {
+    console.log(item, 'item')
+
+    return <Button onPress={onGetFileContents(item.item.path)} title={item.item.name}/>
+  }
 
   if (!uri) {
     return (
@@ -196,6 +228,11 @@ const App = () => {
         </View>
       </View>
       <View style={styles.container}>
+        <FlatList
+            style={styles.directoryList}
+            data={files}
+            renderItem={renderFile}
+        />
         <View style={state.showEditor ? styles.webViewContainer : {}}>
           <WebView
             ref={ref as MutableRefObject<WebView>}
@@ -243,14 +280,16 @@ const styles = StyleSheet.create({
     flexDirection: "row"
   },
   webViewContainer: {
-    flex: 1,
-    backgroundColor: "blue"
+    flex: 2,
   },
   markdownContainer: {
-    flex: 1
+    flex: 2
   },
   safeAreaView: {
     flex: 1
+  },
+  directoryList: {
+    flex: 1,
   }
 });
 
