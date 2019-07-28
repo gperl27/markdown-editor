@@ -1,4 +1,10 @@
-import React, { useState, useReducer, useRef, MutableRefObject } from "react";
+import React, {
+  useState,
+  useReducer,
+  useRef,
+  MutableRefObject,
+  useEffect
+} from "react";
 import {
   SafeAreaView,
   StyleSheet,
@@ -15,6 +21,7 @@ import { WebViewMessage } from "react-native-webview/lib/WebViewTypes";
 import { useLocalServer } from "./src/lib/localStaticServer";
 import { iOSMarkdownStyleFactory } from "./src/lib/theme";
 import { useAsyncStorage } from "@react-native-community/async-storage";
+import RNFS from "react-native-fs";
 
 enum ActionType {
   SHOW_PREVIEW_ONLY,
@@ -119,14 +126,6 @@ const App = () => {
     );
   };
 
-  if (!uri) {
-    return (
-      <SafeAreaView style={styles.safeAreaView}>
-        <Text>Loading...</Text>
-      </SafeAreaView>
-    );
-  }
-
   const getInjectedStr = async () => {
     // await removeItem();
     const cachedEditorState = await getItem();
@@ -145,6 +144,42 @@ const App = () => {
         true;
     `;
   };
+
+  useEffect(() => {
+    // require the module
+
+    // get a list of files and directories in the main bundle
+    RNFS.readDir(RNFS.DocumentDirectoryPath)
+      .then(result => {
+        console.log("GOT RESULT", result);
+
+        // stat the first file
+        return Promise.all([RNFS.stat(result[0].path), result[0].path]);
+      })
+      .then(statResult => {
+        if (statResult[0].isFile()) {
+          // if we have a file, read it
+          return RNFS.readFile(statResult[1], "utf8");
+        }
+
+        return "no file";
+      })
+      .then(contents => {
+        // log the file contents
+        console.log(contents);
+      })
+      .catch(err => {
+        console.log(err.message, err.code);
+      });
+  }, []);
+
+  if (!uri) {
+    return (
+      <SafeAreaView style={styles.safeAreaView}>
+        <Text>Loading...</Text>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safeAreaView}>
