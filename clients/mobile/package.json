@@ -16,7 +16,8 @@
     "react-native-simple-markdown": "^1.1.0",
     "react-native-static-server": "^0.4.2",
     "react-native-typography": "^1.4.1",
-    "react-native-webview": "^5.12.1"
+    "react-native-webview": "^5.12.1",
+    "use-debounce": "^2.2.0"
   },
   "devDependencies": {
     "@babel/core": "^7.5.5",

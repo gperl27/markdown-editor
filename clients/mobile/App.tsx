@@ -3,7 +3,8 @@ import React, {
   useReducer,
   useRef,
   MutableRefObject,
-  useEffect
+  useEffect,
+  useCallback
 } from "react";
 import {
   SafeAreaView,
@@ -14,9 +15,7 @@ import {
   ScrollView,
   Text,
   Button,
-  FlatList,
-  AppState,
-  AppStateStatus
+  FlatList
 } from "react-native";
 import { WebView } from "react-native-webview";
 import Markdown from "react-native-markdown-renderer";
@@ -25,6 +24,7 @@ import { useLocalServer } from "./src/lib/localStaticServer";
 import { iOSMarkdownStyleFactory } from "./src/lib/theme";
 import { useAsyncStorage } from "@react-native-community/async-storage";
 import RNFS from "react-native-fs";
+import { useDebouncedCallback } from "use-debounce";
 
 enum ActionType {
   SHOW_PREVIEW_ONLY,
@@ -84,7 +84,6 @@ const reducer = (state: State, action: Action): State => {
 };
 
 const App = () => {
-  const [appState, setAppState] = useState(AppState.currentState);
   const [value, setValue] = useState("");
   const [path, setPath] = useState("");
   const [position, setPosition] = useState<any | null>(null);
@@ -94,9 +93,26 @@ const App = () => {
   const ref = useRef<WebView>();
   const { getItem, setItem } = useAsyncStorage("editorState");
 
-  const writeItemToStorage = async (newValue: string) => {
-    await setItem(newValue);
-  };
+  const [autoSaveOnChange] = useDebouncedCallback(async contents => {
+    console.log("in autosave");
+
+    const savePath =
+      path.length > 0 ? path : RNFS.DocumentDirectoryPath + "/untitled.md";
+
+    await RNFS.writeFile(savePath, contents, "utf8");
+    await writeItemToStorage(JSON.stringify({ path: savePath, position }));
+  }, 500);
+
+  const [autoSaveOnPositionChange] = useDebouncedCallback(async newPosition => {
+    await writeItemToStorage(JSON.stringify({ path, position: newPosition }));
+  }, 500);
+
+  const writeItemToStorage = useCallback(
+    async (newValue: string) => {
+      await setItem(newValue);
+    },
+    [setItem]
+  );
 
   const onMessage = async (
     webviewEvent: NativeSyntheticEvent<WebViewMessage>
@@ -107,10 +123,18 @@ const App = () => {
 
     if (decodedMessage.event === "change") {
       setValue(decodedMessage.value);
+      autoSaveOnChange(decodedMessage.value);
     }
 
     if (decodedMessage.event === "editor_cursor_position") {
+      console.log(decodedMessage.value, "EDITOR CURSOR UPDATE");
+
+      if (decodedMessage.value === { lineNumber: 1, column: 1 }) {
+        return;
+      }
+
       setPosition(decodedMessage.value);
+      autoSaveOnPositionChange(decodedMessage.value);
     }
 
     if (decodedMessage.event === "toggle_preview") {
@@ -119,14 +143,6 @@ const App = () => {
 
     if (decodedMessage.event === "debug") {
       console.log(decodedMessage.value);
-    }
-
-    if (decodedMessage.event === "save") {
-      const savePath =
-        path.length > 0 ? path : RNFS.DocumentDirectoryPath + "/untitled.md";
-
-      await RNFS.writeFile(savePath, value, "utf8");
-      await writeItemToStorage(JSON.stringify({ path: savePath, position }));
     }
   };
 
@@ -140,9 +156,6 @@ const App = () => {
 
   const onAppLoad = async () => {
     const cachedEditorState = await getItem();
-
-    console.log(cachedEditorState, "cached state");
-
     if (!cachedEditorState) {
       return;
     }
@@ -153,12 +166,14 @@ const App = () => {
     }
 
     setPath(editorData.path);
+
     const content = await RNFS.readFile(editorData.path);
 
-    console.log(content, editorData.position);
-
     sendToEditor("updateEditorValue", content);
-    sendToEditor("updateEditorPosition", editorData.position);
+
+    if (editorData.position) {
+      sendToEditor("updateEditorPosition", editorData.position);
+    }
   };
 
   const sendToEditor = (event: string, data: any) => {
@@ -177,23 +192,13 @@ const App = () => {
     }
   };
 
-  const onGetFileContents = (selectedPath: string) => () => {
+  const onGetFileContents = (selectedPath: string) => async () => {
     setPath(selectedPath);
+    await writeItemToStorage(JSON.stringify({ path: selectedPath, position }));
     RNFS.readFile(selectedPath).then(result => {
       console.log(result, "get file contents");
       sendToEditor("updateEditorValue", result);
     });
-  };
-
-  const onAppStateChange = (nextAppState: AppStateStatus) => {
-    if (appState.match(/inactive|background/)) {
-      writeItemToStorage(JSON.stringify({ path, position })).catch(e =>
-        console.log(e, "error writing to editor state cache")
-      );
-
-      console.log("App has closed");
-    }
-    setAppState(nextAppState);
   };
 
   useEffect(() => {
@@ -207,12 +212,6 @@ const App = () => {
       .catch(err => {
         console.log(err.message, err.code);
       });
-  }, []);
-
-  useEffect(() => {
-    AppState.addEventListener("change", onAppStateChange);
-
-    return () => AppState.removeEventListener("change", onAppStateChange);
   }, []);
 
   const renderFile = item => {

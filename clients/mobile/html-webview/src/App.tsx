@@ -1,5 +1,6 @@
 import React, { ComponentProps, useEffect, useState } from 'react';
 import { Editor } from "@bit/gperl27.markdown-editor.editor";
+import { IPosition } from 'monaco-editor';
 
 type Parameters<T> = T extends (...args: infer T) => any ? T : never;
 type Editor = Parameters<ComponentProps<typeof Editor>["editorDidMount"]>[0];
@@ -9,6 +10,8 @@ type onEditorDidMount = (
 
 const App = () => {
   const [editorRef, setEditorRef] = useState<Editor | undefined>(undefined)
+  const [capturedValue, setCapturedValue] = useState<string | undefined>(undefined);
+  const [capturedPositionValue, setCapturedPositionValue] = useState<IPosition | undefined>(undefined);
 
   const onSave = () => {
     const encodedMessage = JSON.stringify({
@@ -53,21 +56,28 @@ const App = () => {
     setEditorRef(editor);
   };
 
-  const onUpdateEditorValue = (event: CustomEvent<string>) => {
-      if (editorRef) {
-        editorRef.setValue(event.detail)
-      }
-  };
-
-  const onUpdateEditorPosition = (event: CustomEvent<string>) => {
-    if (editorRef) {
-        // @ts-ignore
-      editorRef.setPosition(event.detail.position)
-    }
-  };
-
   useEffect(() => {
     if (editorRef) {
+      if (capturedValue) {
+        editorRef.setValue(capturedValue)
+      }
+
+      if (capturedPositionValue) {
+        editorRef.setPosition(capturedPositionValue)
+      }
+    }
+  }, [editorRef, capturedValue, capturedPositionValue])
+
+  useEffect(() => {
+      const onUpdateEditorValue = (event: CustomEvent<string>) => {
+          setCapturedValue(event.detail);
+      };
+
+      const onUpdateEditorPosition = (event: CustomEvent<string>) => {
+        // @ts-ignore
+        setCapturedPositionValue(event.detail.position);
+      };
+
       window.addEventListener(
           "updateEditorValue",
           onUpdateEditorValue as EventListener,
@@ -89,8 +99,7 @@ const App = () => {
             onUpdateEditorPosition as EventListener
         );
       }
-    }
-  }, [editorRef]);
+  }, []);
 
   return (
     <Editor
