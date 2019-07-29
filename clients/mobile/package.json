@@ -36,5 +36,8 @@
   },
   "jest": {
     "preset": "react-native"
+  },
+  "peerDependencies": {
+    "monaco-editor": "^0.17.1"
   }
 }

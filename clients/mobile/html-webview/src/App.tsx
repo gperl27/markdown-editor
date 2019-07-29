@@ -8,6 +8,17 @@ type onEditorDidMount = (
   ...params: Parameters<ComponentProps<typeof Editor>["editorDidMount"]>
 ) => void;
 
+enum HtmlToApp {
+  CHANGE_VALUE,
+  CHANGE_POSITION,
+  TOGGLE_PREVIEW
+}
+
+enum AppToHtml {
+  UPDATE_EDITOR_VALUE = "updateEditorValue",
+  UPDATE_EDITOR_POSITION = "updateEditorPosition"
+}
+
 const App = () => {
   const [editorRef, setEditorRef] = useState<Editor | undefined>(undefined)
   const [capturedValue, setCapturedValue] = useState<string | undefined>(undefined);
@@ -32,20 +43,20 @@ const App = () => {
   };
 
   const onChange = (value: string) => {
-    const encodedMessage = JSON.stringify({ event: "change", value });
+    const encodedMessage = JSON.stringify({ event: HtmlToApp.CHANGE_VALUE, value });
 
     // @ts-ignore
     window.ReactNativeWebView && window.ReactNativeWebView.postMessage(encodedMessage);
   };
 
   const onTogglePreview = () => {
-    const encodedMessage = JSON.stringify({ event: "toggle_preview" });
+    const encodedMessage = JSON.stringify({ event: HtmlToApp.TOGGLE_PREVIEW });
     // @ts-ignore
     window.ReactNativeWebView && window.ReactNativeWebView.postMessage(encodedMessage);
   };
 
   const onDidChangeCursorPosition = (e: any) => {
-    const encodedMessage = JSON.stringify({ event: "editor_cursor_position", value: e });
+    const encodedMessage = JSON.stringify({ event: HtmlToApp.CHANGE_POSITION, value: e });
     // @ts-ignore
     window.ReactNativeWebView && window.ReactNativeWebView.postMessage(encodedMessage);
   };
@@ -79,23 +90,23 @@ const App = () => {
       };
 
       window.addEventListener(
-          "updateEditorValue",
+          AppToHtml.UPDATE_EDITOR_VALUE,
           onUpdateEditorValue as EventListener,
           false
       );
       window.addEventListener(
-          "updateEditorPosition",
+          AppToHtml.UPDATE_EDITOR_POSITION,
           onUpdateEditorPosition as EventListener,
           false
       );
 
       return () => {
         window.removeEventListener(
-            "updateEditorValue",
+            AppToHtml.UPDATE_EDITOR_VALUE,
             onUpdateEditorValue as EventListener
         );
         window.removeEventListener(
-            "updateEditorPosition",
+            AppToHtml.UPDATE_EDITOR_POSITION,
             onUpdateEditorPosition as EventListener
         );
       }

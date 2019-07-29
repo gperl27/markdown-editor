@@ -1,17 +1,9 @@
-import React, {
-  useState,
-  useReducer,
-  useRef,
-  MutableRefObject,
-  useEffect,
-  useCallback
-} from "react";
+import React, { useReducer, useRef, MutableRefObject } from "react";
 import {
   SafeAreaView,
   StyleSheet,
   StatusBar,
   View,
-  NativeSyntheticEvent,
   ScrollView,
   Text,
   Button,
@@ -19,143 +11,65 @@ import {
 } from "react-native";
 import { WebView } from "react-native-webview";
 import Markdown from "react-native-markdown-renderer";
-import { WebViewMessage } from "react-native-webview/lib/WebViewTypes";
 import { useLocalServer } from "./src/lib/localStaticServer";
 import { iOSMarkdownStyleFactory } from "./src/lib/theme";
 import { useAsyncStorage } from "@react-native-community/async-storage";
 import RNFS from "react-native-fs";
-import { useDebouncedCallback } from "use-debounce";
-
-enum ActionType {
-  SHOW_PREVIEW_ONLY,
-  SHOW_EDITOR_ONLY,
-  SHOW_BOTH,
-  TOGGLE_SHOW_EDITOR,
-  TOGGLE_SHOW_PREVIEW
-}
-
-interface Action<T extends {} | ((...params: any) => any) = {}> {
-  type: ActionType;
-  payload?: T;
-}
-
-interface State {
-  showEditor: boolean;
-  showMarkdownPreview: boolean;
-}
-
-const initialState: State = {
-  showEditor: true,
-  showMarkdownPreview: true
-};
-
-const reducer = (state: State, action: Action): State => {
-  switch (action.type) {
-    case ActionType.SHOW_PREVIEW_ONLY:
-      return {
-        showEditor: false,
-        showMarkdownPreview: true
-      };
-    case ActionType.SHOW_EDITOR_ONLY:
-      return {
-        showEditor: true,
-        showMarkdownPreview: false
-      };
-    case ActionType.SHOW_BOTH:
-      return {
-        showEditor: true,
-        showMarkdownPreview: true
-      };
-    case ActionType.TOGGLE_SHOW_EDITOR:
-      return {
-        ...state,
-        showEditor: !state.showEditor
-      };
-    case ActionType.TOGGLE_SHOW_PREVIEW:
-      return {
-        ...state,
-        showMarkdownPreview: !state.showMarkdownPreview
-      };
-    default:
-      console.log("Improper type dispatched, resetting");
-
-      return initialState;
-  }
-};
+import { AppToHtml } from "./src/domain/editorIpc";
+import { useEditor } from "./src/hooks/useEditor";
+import {
+  editorUiInitialState,
+  editorUiReducer,
+  EditorUiTypes
+} from "./src/reducers/editorUi";
+import { CacheKeys } from "./src/domain/cache";
+import { defaultPath, useFileSystem } from "./src/hooks/useFileSystem";
 
 const App = () => {
-  const [value, setValue] = useState("");
-  const [path, setPath] = useState("");
-  const [position, setPosition] = useState<any | null>(null);
-  const [files, setFiles] = useState([]);
-  const [state, dispatch] = useReducer(reducer, initialState);
+  const {
+    files,
+    currentWorkingPath = defaultPath,
+    setCurrentWorkingPath
+  } = useFileSystem();
+  const [state, dispatch] = useReducer(editorUiReducer, editorUiInitialState);
   const { uri } = useLocalServer();
   const ref = useRef<WebView>();
-  const { getItem, setItem } = useAsyncStorage("editorState");
-
-  const [autoSaveOnChange] = useDebouncedCallback(async contents => {
-    console.log("in autosave");
-
-    const savePath =
-      path.length > 0 ? path : RNFS.DocumentDirectoryPath + "/untitled.md";
-
-    await RNFS.writeFile(savePath, contents, "utf8");
-    await writeItemToStorage(JSON.stringify({ path: savePath, position }));
-  }, 500);
-
-  const [autoSaveOnPositionChange] = useDebouncedCallback(async newPosition => {
-    await writeItemToStorage(JSON.stringify({ path, position: newPosition }));
-  }, 500);
-
-  const writeItemToStorage = useCallback(
-    async (newValue: string) => {
-      await setItem(newValue);
-    },
-    [setItem]
+  const { getItem: getEditorState, setItem: setEditorState } = useAsyncStorage(
+    CacheKeys.EDITOR_STATE
   );
-
-  const onMessage = async (
-    webviewEvent: NativeSyntheticEvent<WebViewMessage>
-  ) => {
-    const decodedMessage: { event: string; value: string } = JSON.parse(
-      webviewEvent.nativeEvent.data
-    );
-
-    if (decodedMessage.event === "change") {
-      setValue(decodedMessage.value);
-      autoSaveOnChange(decodedMessage.value);
-    }
-
-    if (decodedMessage.event === "editor_cursor_position") {
-      console.log(decodedMessage.value, "EDITOR CURSOR UPDATE");
-
-      if (decodedMessage.value === { lineNumber: 1, column: 1 }) {
-        return;
-      }
-
-      setPosition(decodedMessage.value);
-      autoSaveOnPositionChange(decodedMessage.value);
-    }
-
-    if (decodedMessage.event === "toggle_preview") {
-      dispatch({ type: ActionType.TOGGLE_SHOW_PREVIEW });
-    }
-
-    if (decodedMessage.event === "debug") {
-      console.log(decodedMessage.value);
-    }
-  };
+  const { onMessage, value, position, injectedJavascriptFactory } = useEditor({
+    path: currentWorkingPath,
+    dispatch
+  });
 
   const onShowEditorOnly = () => {
-    dispatch({ type: ActionType.SHOW_EDITOR_ONLY });
+    dispatch({ type: EditorUiTypes.SHOW_EDITOR_ONLY });
   };
 
   const onShowPreviewOnly = () => {
-    dispatch({ type: ActionType.SHOW_PREVIEW_ONLY });
+    dispatch({ type: EditorUiTypes.SHOW_PREVIEW_ONLY });
+  };
+
+  const sendToEditor = (event: string, data: any) => {
+    const injected = injectedJavascriptFactory(event, data);
+
+    if (ref && ref.current) {
+      console.log("send to editor");
+      ref.current.injectJavaScript(injected);
+    }
+  };
+
+  const onGetFileContents = (selectedPath: string) => async () => {
+    setCurrentWorkingPath(selectedPath);
+    await setEditorState(JSON.stringify({ path: selectedPath, position }));
+    RNFS.readFile(selectedPath).then(result => {
+      sendToEditor(AppToHtml.UPDATE_EDITOR_VALUE, result);
+    });
   };
 
   const onAppLoad = async () => {
-    const cachedEditorState = await getItem();
+    const cachedEditorState = await getEditorState();
+
     if (!cachedEditorState) {
       return;
     }
@@ -165,54 +79,12 @@ const App = () => {
       return;
     }
 
-    setPath(editorData.path);
-
+    setCurrentWorkingPath(editorData.path);
     const content = await RNFS.readFile(editorData.path);
 
-    sendToEditor("updateEditorValue", content);
-
-    if (editorData.position) {
-      sendToEditor("updateEditorPosition", editorData.position);
-    }
+    sendToEditor(AppToHtml.UPDATE_EDITOR_VALUE, content);
+    sendToEditor(AppToHtml.UPDATE_EDITOR_POSITION, editorData.position);
   };
-
-  const sendToEditor = (event: string, data: any) => {
-    const injected = `
-        (function(){
-          window.dispatchEvent(new CustomEvent("${event}", { detail: ${JSON.stringify(
-      data
-    )} }));
-        })();
-        true;
-    `;
-
-    if (ref && ref.current) {
-      console.log("send to editor");
-      ref.current.injectJavaScript(injected);
-    }
-  };
-
-  const onGetFileContents = (selectedPath: string) => async () => {
-    setPath(selectedPath);
-    await writeItemToStorage(JSON.stringify({ path: selectedPath, position }));
-    RNFS.readFile(selectedPath).then(result => {
-      console.log(result, "get file contents");
-      sendToEditor("updateEditorValue", result);
-    });
-  };
-
-  useEffect(() => {
-    RNFS.readDir(RNFS.DocumentDirectoryPath)
-      .then(result => {
-        console.log("GOT RESULT", result);
-        setFiles(result);
-
-        return result;
-      })
-      .catch(err => {
-        console.log(err.message, err.code);
-      });
-  }, []);
 
   const renderFile = item => {
     console.log(item, "item");
@@ -242,7 +114,7 @@ const App = () => {
           <Button title={"Show Editor Only"} onPress={onShowEditorOnly} />
           <Button
             title={"Show Both"}
-            onPress={() => dispatch({ type: ActionType.SHOW_BOTH })}
+            onPress={() => dispatch({ type: EditorUiTypes.SHOW_BOTH })}
           />
           <Button title={"Preview Only"} onPress={onShowPreviewOnly} />
         </View>
