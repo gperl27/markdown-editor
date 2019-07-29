@@ -53,29 +53,44 @@ const App = () => {
     setEditorRef(editor);
   };
 
+  const onUpdateEditorValue = (event: CustomEvent<string>) => {
+      if (editorRef) {
+        editorRef.setValue(event.detail)
+      }
+  };
+
+  const onUpdateEditorPosition = (event: CustomEvent<string>) => {
+    if (editorRef) {
+        // @ts-ignore
+      editorRef.setPosition(event.detail.position)
+    }
+  };
+
   useEffect(() => {
     if (editorRef) {
-      // @ts-ignore
-      logDebug(window.MarkdownEditor)
+      window.addEventListener(
+          "updateEditorValue",
+          onUpdateEditorValue as EventListener,
+          false
+      );
+      window.addEventListener(
+          "updateEditorPosition",
+          onUpdateEditorPosition as EventListener,
+          false
+      );
 
-      // @ts-ignore
-      if (window.MarkdownEditor) {
-        // @ts-ignore
-        if (window.MarkdownEditor.value) {
-          // @ts-ignore
-          editorRef.setValue(window.MarkdownEditor.value);
-        }
-
-        // @ts-ignore
-          if (window.MarkdownEditor.position && window.MarkdownEditor.position.position) {
-            // @ts-ignore
-            editorRef.setPosition(window.MarkdownEditor.position.position);
-          }
+      return () => {
+        window.removeEventListener(
+            "updateEditorValue",
+            onUpdateEditorValue as EventListener
+        );
+        window.removeEventListener(
+            "updateEditorPosition",
+            onUpdateEditorPosition as EventListener
+        );
       }
     }
-
-      // @ts-ignore
-  }, [editorRef, window.MarkdownEditor])
+  }, [editorRef]);
 
   return (
     <Editor

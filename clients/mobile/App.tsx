@@ -6,14 +6,17 @@ import React, {
   useEffect
 } from "react";
 import {
-    SafeAreaView,
-    StyleSheet,
-    StatusBar,
-    View,
-    NativeSyntheticEvent,
-    ScrollView,
-    Text,
-    Button, FlatList
+  SafeAreaView,
+  StyleSheet,
+  StatusBar,
+  View,
+  NativeSyntheticEvent,
+  ScrollView,
+  Text,
+  Button,
+  FlatList,
+  AppState,
+  AppStateStatus
 } from "react-native";
 import { WebView } from "react-native-webview";
 import Markdown from "react-native-markdown-renderer";
@@ -81,9 +84,11 @@ const reducer = (state: State, action: Action): State => {
 };
 
 const App = () => {
+  const [appState, setAppState] = useState(AppState.currentState);
   const [value, setValue] = useState("");
+  const [path, setPath] = useState("");
   const [position, setPosition] = useState<any | null>(null);
-  const [files, setFiles] = useState([])
+  const [files, setFiles] = useState([]);
   const [state, dispatch] = useReducer(reducer, initialState);
   const { uri } = useLocalServer();
   const ref = useRef<WebView>();
@@ -93,7 +98,9 @@ const App = () => {
     await setItem(newValue);
   };
 
-  const onMessage = (webviewEvent: NativeSyntheticEvent<WebViewMessage>) => {
+  const onMessage = async (
+    webviewEvent: NativeSyntheticEvent<WebViewMessage>
+  ) => {
     const decodedMessage: { event: string; value: string } = JSON.parse(
       webviewEvent.nativeEvent.data
     );
@@ -115,17 +122,12 @@ const App = () => {
     }
 
     if (decodedMessage.event === "save") {
-          var path = RNFS.DocumentDirectoryPath + '/test2.md';
+      const savePath =
+        path.length > 0 ? path : RNFS.DocumentDirectoryPath + "/untitled.md";
 
-// write the file
-          RNFS.writeFile(path, value, 'utf8')
-              .then((success) => {
-                  console.log('FILE WRITTEN!');
-              })
-              .catch((err) => {
-                  console.log(err.message);
-              });
-      }
+      await RNFS.writeFile(savePath, value, "utf8");
+      await writeItemToStorage(JSON.stringify({ path: savePath, position }));
+    }
   };
 
   const onShowEditorOnly = () => {
@@ -134,76 +136,95 @@ const App = () => {
 
   const onShowPreviewOnly = () => {
     dispatch({ type: ActionType.SHOW_PREVIEW_ONLY });
-
-    writeItemToStorage(JSON.stringify({ value, position })).catch(e =>
-      console.log(e, "error writing to editor state cache")
-    );
   };
 
-  const getInjectedStr = async () => {
-    // await removeItem();
+  const onAppLoad = async () => {
     const cachedEditorState = await getItem();
 
+    console.log(cachedEditorState, "cached state");
+
     if (!cachedEditorState) {
-      return null;
+      return;
     }
 
     const editorData = JSON.parse(cachedEditorState);
+    if (!editorData.path) {
+      return;
+    }
 
-    return `
-        window.MarkdownEditor = { 
-          value: ${JSON.stringify(editorData.value)},
-          position: ${JSON.stringify(editorData.position)},
-        }; 
-        true;
-    `;
+    setPath(editorData.path);
+    const content = await RNFS.readFile(editorData.path);
+
+    console.log(content, editorData.position);
+
+    sendToEditor("updateEditorValue", content);
+    sendToEditor("updateEditorPosition", editorData.position);
   };
 
-  const sendToEditor = () => {
-      const injected = `
-        window.MarkdownEditor = { 
-          value: ${JSON.stringify(value)}
-        }; 
+  const sendToEditor = (event: string, data: any) => {
+    const injected = `
+        (function(){
+          window.dispatchEvent(new CustomEvent("${event}", { detail: ${JSON.stringify(
+      data
+    )} }));
+        })();
         true;
     `;
 
-      if (ref && ref.current) {
-          console.log('send to editor')
-          ref.current.injectJavaScript(injected)
-      }
-  }
+    if (ref && ref.current) {
+      console.log("send to editor");
+      ref.current.injectJavaScript(injected);
+    }
+  };
 
-  const onGetFileContents = (path: string) => () => {
-   RNFS.readFile(path)
-       .then(result => {
-         setValue(result);
-         sendToEditor();
-       })
-  }
+  const onGetFileContents = (selectedPath: string) => () => {
+    setPath(selectedPath);
+    RNFS.readFile(selectedPath).then(result => {
+      console.log(result, "get file contents");
+      sendToEditor("updateEditorValue", result);
+    });
+  };
+
+  const onAppStateChange = (nextAppState: AppStateStatus) => {
+    if (appState.match(/inactive|background/)) {
+      writeItemToStorage(JSON.stringify({ path, position })).catch(e =>
+        console.log(e, "error writing to editor state cache")
+      );
+
+      console.log("App has closed");
+    }
+    setAppState(nextAppState);
+  };
 
   useEffect(() => {
-    // require the module
-
-    // get a list of files and directories in the main bundle
     RNFS.readDir(RNFS.DocumentDirectoryPath)
       .then(result => {
-          console.log("GOT RESULT", result);
-          setFiles(result);
+        console.log("GOT RESULT", result);
+        setFiles(result);
 
-          return result;
-
+        return result;
       })
       .catch(err => {
         console.log(err.message, err.code);
       });
   }, []);
 
+  useEffect(() => {
+    AppState.addEventListener("change", onAppStateChange);
 
-  const renderFile = (item) => {
-    console.log(item, 'item')
+    return () => AppState.removeEventListener("change", onAppStateChange);
+  }, []);
 
-    return <Button onPress={onGetFileContents(item.item.path)} title={item.item.name}/>
-  }
+  const renderFile = item => {
+    console.log(item, "item");
+
+    return (
+      <Button
+        onPress={onGetFileContents(item.item.path)}
+        title={item.item.name}
+      />
+    );
+  };
 
   if (!uri) {
     return (
@@ -229,9 +250,9 @@ const App = () => {
       </View>
       <View style={styles.container}>
         <FlatList
-            style={styles.directoryList}
-            data={files}
-            renderItem={renderFile}
+          style={styles.directoryList}
+          data={files}
+          renderItem={renderFile}
         />
         <View style={state.showEditor ? styles.webViewContainer : {}}>
           <WebView
@@ -249,17 +270,7 @@ const App = () => {
             allowFileAccess={true}
             useWebKit={true}
             onMessage={onMessage}
-            onLoadStart={async () => {
-              const injected = await getInjectedStr();
-
-              if (!injected) {
-                return;
-              }
-
-              if (ref && ref.current) {
-                ref.current.injectJavaScript(injected);
-              }
-            }}
+            onLoadEnd={onAppLoad}
           />
         </View>
         {state.showMarkdownPreview && (
@@ -280,7 +291,7 @@ const styles = StyleSheet.create({
     flexDirection: "row"
   },
   webViewContainer: {
-    flex: 2,
+    flex: 2
   },
   markdownContainer: {
     flex: 2
@@ -289,7 +300,7 @@ const styles = StyleSheet.create({
     flex: 1
   },
   directoryList: {
-    flex: 1,
+    flex: 1
   }
 });
 
