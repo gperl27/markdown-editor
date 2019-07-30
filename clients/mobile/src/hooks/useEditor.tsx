@@ -20,20 +20,23 @@ interface Props {
 export const useEditor = (props: Props) => {
   const [value, setValue] = useState("");
   const [position, setPosition] = useState<IPosition | undefined>(undefined);
-  const { setItem } = useAsyncStorage(CacheKeys.EDITOR_STATE);
+  const { mergeItem } = useAsyncStorage(CacheKeys.EDITOR_STATE);
+
+  const getPathIfFirstSave = (content: string) => {
+    return props.path.includes("untitled")
+      ? RNFS.DocumentDirectoryPath + `/${content.slice(0, 10).trim()}.md`
+      : props.path;
+  };
 
   const [autoSaveOnChange] = useDebouncedCallback(async contents => {
-    const savePath =
-      props.path.length > 0
-        ? props.path
-        : RNFS.DocumentDirectoryPath + "/untitled.md";
+    const path = getPathIfFirstSave(contents);
 
-    await RNFS.writeFile(savePath, contents, "utf8");
-    await setItem(JSON.stringify({ path: savePath, position }));
+    await RNFS.writeFile(path, contents, "utf8");
+    await mergeItem(JSON.stringify({ path, position }));
   }, DEBOUNCE);
 
   const [autoSaveOnPositionChange] = useDebouncedCallback(async newPosition => {
-    await setItem(JSON.stringify({ path: props.path, position: newPosition }));
+    await mergeItem(JSON.stringify({ position: newPosition }));
   }, DEBOUNCE);
 
   const isEditorDefaultPosition = (incomingValue: any) =>

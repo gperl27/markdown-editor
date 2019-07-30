@@ -1,4 +1,10 @@
-import React, { useReducer, useRef, MutableRefObject } from "react";
+import React, {
+  useReducer,
+  useRef,
+  MutableRefObject,
+  useState,
+  useEffect
+} from "react";
 import {
   SafeAreaView,
   StyleSheet,
@@ -14,7 +20,7 @@ import Markdown from "react-native-markdown-renderer";
 import { useLocalServer } from "./src/lib/localStaticServer";
 import { iOSMarkdownStyleFactory } from "./src/lib/theme";
 import { useAsyncStorage } from "@react-native-community/async-storage";
-import RNFS from "react-native-fs";
+import RNFS, { ReadDirItem } from "react-native-fs";
 import { AppToHtml } from "./src/domain/editorIpc";
 import { useEditor } from "./src/hooks/useEditor";
 import {
@@ -24,6 +30,7 @@ import {
 } from "./src/reducers/editorUi";
 import { CacheKeys } from "./src/domain/cache";
 import { defaultPath, useFileSystem } from "./src/hooks/useFileSystem";
+import { iOSUIKit } from "react-native-typography";
 
 const App = () => {
   const {
@@ -34,13 +41,16 @@ const App = () => {
   const [state, dispatch] = useReducer(editorUiReducer, editorUiInitialState);
   const { uri } = useLocalServer();
   const ref = useRef<WebView>();
-  const { getItem: getEditorState, setItem: setEditorState } = useAsyncStorage(
-    CacheKeys.EDITOR_STATE
-  );
-  const { onMessage, value, position, injectedJavascriptFactory } = useEditor({
+  const {
+    getItem: getEditorCache,
+    mergeItem: mergeEditorCache,
+      removeItem
+  } = useAsyncStorage(CacheKeys.EDITOR_STATE);
+  const { onMessage, value, injectedJavascriptFactory } = useEditor({
     path: currentWorkingPath,
     dispatch
   });
+  const [currentFileName, setCurrentFileName] = useState<string | null>(null);
 
   const onShowEditorOnly = () => {
     dispatch({ type: EditorUiTypes.SHOW_EDITOR_ONLY });
@@ -54,45 +64,55 @@ const App = () => {
     const injected = injectedJavascriptFactory(event, data);
 
     if (ref && ref.current) {
-      console.log("send to editor");
       ref.current.injectJavaScript(injected);
     }
   };
 
-  const onGetFileContents = (selectedPath: string) => async () => {
+  const onGetFileContents = async (
+    selectedPath: string,
+    name: string | null
+  ) => {
     setCurrentWorkingPath(selectedPath);
-    await setEditorState(JSON.stringify({ path: selectedPath, position }));
-    RNFS.readFile(selectedPath).then(result => {
-      sendToEditor(AppToHtml.UPDATE_EDITOR_VALUE, result);
+    name && setCurrentFileName(name);
+
+    const content = await RNFS.readFile(selectedPath);
+    sendToEditor(AppToHtml.UPDATE_EDITOR_VALUE, content);
+
+    mergeEditorCache(
+      JSON.stringify({ path: selectedPath, filename: name })
+    ).catch(e => {
+      console.log(e);
     });
   };
 
   const onAppLoad = async () => {
-    const cachedEditorState = await getEditorState();
+    const cachedEditorState = await getEditorCache();
 
     if (!cachedEditorState) {
       return;
     }
 
     const editorData = JSON.parse(cachedEditorState);
+
     if (!editorData.path) {
       return;
     }
 
-    setCurrentWorkingPath(editorData.path);
-    const content = await RNFS.readFile(editorData.path);
-
-    sendToEditor(AppToHtml.UPDATE_EDITOR_VALUE, content);
+    await onGetFileContents(editorData.path, editorData.filename);
     sendToEditor(AppToHtml.UPDATE_EDITOR_POSITION, editorData.position);
   };
 
-  const renderFile = item => {
-    console.log(item, "item");
-
+  const renderFile = ({
+    item
+  }: {
+    item: ReadDirItem;
+    index: number;
+    separators: any;
+  }) => {
     return (
       <Button
-        onPress={onGetFileContents(item.item.path)}
-        title={item.item.name}
+        onPress={() => onGetFileContents(item.path, item.name)}
+        title={item.name}
       />
     );
   };
@@ -108,49 +128,65 @@ const App = () => {
   return (
     <SafeAreaView style={styles.safeAreaView}>
       <StatusBar barStyle="dark-content" />
-      <View>
-        <Text>Top UI Bar Here</Text>
-        <View>
-          <Button title={"Show Editor Only"} onPress={onShowEditorOnly} />
-          <Button
-            title={"Show Both"}
-            onPress={() => dispatch({ type: EditorUiTypes.SHOW_BOTH })}
-          />
-          <Button title={"Preview Only"} onPress={onShowPreviewOnly} />
-        </View>
-      </View>
+      <View />
       <View style={styles.container}>
-        <FlatList
-          style={styles.directoryList}
-          data={files}
-          renderItem={renderFile}
-        />
-        <View style={state.showEditor ? styles.webViewContainer : {}}>
-          <WebView
-            ref={ref as MutableRefObject<WebView>}
-            hideKeyboardAccessoryView={true}
-            keyboardDisplayRequiresUserAction={false}
-            scrollEnabled={false}
-            showsHorizontalScrollIndicator={false}
-            showsVerticalScrollIndicator={false}
-            bounces={false}
-            overScrollMode="never"
-            source={{ uri }}
-            javaScriptEnabled={true}
-            originWhitelist={["*"]}
-            allowFileAccess={true}
-            useWebKit={true}
-            onMessage={onMessage}
-            onLoadEnd={onAppLoad}
-          />
+        <View style={styles.directoryList}>
+          {state.showDirectory && (
+            <FlatList
+              keyExtractor={(item, index) => index.toString()}
+              data={files}
+              renderItem={renderFile}
+            />
+          )}
         </View>
-        {state.showMarkdownPreview && (
-          <View style={styles.markdownContainer}>
-            <ScrollView>
-              <Markdown style={markdownStyles}>{value}</Markdown>
-            </ScrollView>
+        <View style={styles.editorContainer}>
+          <View style={styles.toolbar}>
+            <View>
+              <Button onPress={() => {}} title={"Change Theme"} />
+            </View>
+            <View>
+              <Text style={iOSUIKit.title3EmphasizedObject}>
+                {currentFileName || "untitled.md"}
+              </Text>
+            </View>
+            <View style={styles.previewButtonGroup}>
+              <Button title={"Show Editor Only"} onPress={onShowEditorOnly} />
+              <Button
+                title={"Show Both"}
+                onPress={() => dispatch({ type: EditorUiTypes.SHOW_BOTH })}
+              />
+              <Button title={"Preview Only"} onPress={onShowPreviewOnly} />
+            </View>
           </View>
-        )}
+          <View style={styles.innerEditorContainer}>
+            <View style={state.showEditor ? styles.webViewContainer : {}}>
+              <WebView
+                ref={ref as MutableRefObject<WebView>}
+                hideKeyboardAccessoryView={true}
+                keyboardDisplayRequiresUserAction={false}
+                scrollEnabled={false}
+                showsHorizontalScrollIndicator={false}
+                showsVerticalScrollIndicator={false}
+                bounces={false}
+                overScrollMode="never"
+                source={{ uri }}
+                javaScriptEnabled={true}
+                originWhitelist={["*"]}
+                allowFileAccess={true}
+                useWebKit={true}
+                onMessage={onMessage}
+                onLoadEnd={onAppLoad}
+              />
+            </View>
+            {state.showMarkdownPreview && (
+              <View style={styles.markdownContainer}>
+                <ScrollView>
+                  <Markdown style={markdownStyles}>{value}</Markdown>
+                </ScrollView>
+              </View>
+            )}
+          </View>
+        </View>
       </View>
     </SafeAreaView>
   );
@@ -171,7 +207,22 @@ const styles = StyleSheet.create({
     flex: 1
   },
   directoryList: {
-    flex: 1
+    flex: 0.5
+  },
+  editorContainer: {
+    flex: 2
+  },
+  innerEditorContainer: {
+    flex: 1,
+    flexDirection: "row"
+  },
+  toolbar: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-around"
+  },
+  previewButtonGroup: {
+    flexDirection: "row"
   }
 });
 
