@@ -1,10 +1,4 @@
-import React, {
-  useReducer,
-  useRef,
-  MutableRefObject,
-  useState,
-  useEffect
-} from "react";
+import React, { useReducer, useRef, MutableRefObject, useState } from "react";
 import {
   SafeAreaView,
   StyleSheet,
@@ -12,8 +6,7 @@ import {
   View,
   ScrollView,
   Text,
-  Button,
-  FlatList
+  Button
 } from "react-native";
 import { WebView } from "react-native-webview";
 import Markdown from "react-native-markdown-renderer";
@@ -31,6 +24,7 @@ import {
 import { CacheKeys } from "./src/domain/cache";
 import { defaultPath, useFileSystem } from "./src/hooks/useFileSystem";
 import { iOSUIKit } from "react-native-typography";
+import { SwipeListView } from "react-native-swipe-list-view";
 
 const App = () => {
   const {
@@ -44,7 +38,7 @@ const App = () => {
   const {
     getItem: getEditorCache,
     mergeItem: mergeEditorCache,
-      removeItem
+    removeItem
   } = useAsyncStorage(CacheKeys.EDITOR_STATE);
   const { onMessage, value, injectedJavascriptFactory } = useEditor({
     path: currentWorkingPath,
@@ -110,10 +104,23 @@ const App = () => {
     separators: any;
   }) => {
     return (
-      <Button
-        onPress={() => onGetFileContents(item.path, item.name)}
-        title={item.name}
-      />
+      <View style={styles.rowFront}>
+        <Button
+          onPress={() => onGetFileContents(item.path, item.name)}
+          title={item.name}
+        />
+      </View>
+    );
+  };
+
+  const hiddenItem = (data, rowMap) => {
+    console.log(data, "data in hidden item");
+    console.log(rowMap, "wtf is this");
+
+    return (
+      <View style={styles.rowBack}>
+        <Text>Delete</Text>
+      </View>
     );
   };
 
@@ -132,10 +139,14 @@ const App = () => {
       <View style={styles.container}>
         <View style={styles.directoryList}>
           {state.showDirectory && (
-            <FlatList
+            <SwipeListView
               keyExtractor={(item, index) => index.toString()}
               data={files}
               renderItem={renderFile}
+              renderHiddenItem={hiddenItem}
+              rightOpenValue={-75}
+              leftOpenValue={75}
+              disableRightSwipe={true}
             />
           )}
         </View>
@@ -223,6 +234,22 @@ const styles = StyleSheet.create({
   },
   previewButtonGroup: {
     flexDirection: "row"
+  },
+  rowFront: {
+    alignItems: "center",
+    backgroundColor: "#CCC",
+    borderBottomColor: "black",
+    borderBottomWidth: 1,
+    justifyContent: "center",
+    height: 50
+  },
+  rowBack: {
+    alignItems: "center",
+    backgroundColor: "#DDD",
+    flex: 1,
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    paddingLeft: 15
   }
 });
 

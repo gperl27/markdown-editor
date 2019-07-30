@@ -4495,11 +4495,6 @@ mkdirp@^0.5.0, mkdirp@^0.5.1:
   dependencies:
     minimist "0.0.8"
 
-monaco-editor@^0.17.1:
-  version "0.17.1"
-  resolved "https://registry.yarnpkg.com/monaco-editor/-/monaco-editor-0.17.1.tgz#8fbe96ca54bfa75262706e044f8f780e904aa45c"
-  integrity sha512-JAc0mtW7NeO+0SwPRcdkfDbWLgkqL9WfP1NbpP9wNASsW6oWqgZqNIWt4teymGjZIXTElx3dnQmUYHmVrJ7HxA==
-
 morgan@^1.9.0:
   version "1.9.1"
   resolved "https://registry.yarnpkg.com/morgan/-/morgan-1.9.1.tgz#0a8d16734a1d9afbc824b99df87e738e58e2da59"
@@ -5252,6 +5247,11 @@ react-native-static-server@^0.4.2:
   version "0.4.2"
   resolved "https://registry.yarnpkg.com/react-native-static-server/-/react-native-static-server-0.4.2.tgz#dea8415e27d723fc5607a155a03a7e92bee21840"
   integrity sha512-EDcWQDhHbrO6r8flpg8OJCvpndo4H6j9CPfOeO3VPPeEAhr2hz4I9ryA/CcdJgrr+ri/HntGtnlK6GLVGVbQpw==
+
+react-native-swipe-list-view@^2.0.0:
+  version "2.0.0"
+  resolved "https://registry.yarnpkg.com/react-native-swipe-list-view/-/react-native-swipe-list-view-2.0.0.tgz#031db12a52d3441715ff1d1e127a8aaee95c21aa"
+  integrity sha512-Lyoau882tcyWeZ/+8GOM0vi1obLbvHcVEM980D9/Qh9lQ/f2wJhbKM4pTXVBmJoWc+IDn31TRAenWzpGahEK8A==
 
 react-native-typography@^1.4.1:
   version "1.4.1"
