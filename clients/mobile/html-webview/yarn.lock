@@ -892,10 +892,10 @@
     lodash "^4.17.11"
     to-fast-properties "^2.0.0"
 
-"@bit/gperl27.markdown-editor.editor@^1.0.6":
-  version "1.0.6"
-  resolved "https://node.bit.dev/gperl27.markdown-editor.editor/-/gperl27.markdown-editor.editor-1.0.6.tgz#92d6f1ebf968410b08a22de590d2e4082b0a8bed"
-  integrity sha1-ktbx6/loQQsIoi3lkNLkCCsKi+0=
+"@bit/gperl27.markdown-editor.editor@^1.0.8":
+  version "1.0.8"
+  resolved "https://node.bit.dev/gperl27.markdown-editor.editor/-/gperl27.markdown-editor.editor-1.0.8.tgz#e0b43fa49c069a2fafb358e3dde48828e6b42b73"
+  integrity sha1-4LQ/pJwGmi+vs1jj3eSIKOa0K3M=
   dependencies:
     monaco-editor "^0.17.1"
     react "^16.8.6"

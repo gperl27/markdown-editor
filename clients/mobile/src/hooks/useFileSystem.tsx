@@ -14,7 +14,7 @@ export const useFileSystem = () => {
   >(undefined);
   const [files, setFiles] = useState<ReadDirItem[]>([]);
 
-  useEffect(() => {
+  const getFiles = () => {
     RNFS.readDir(RNFS.DocumentDirectoryPath)
       .then(result => {
         setFiles(getReadableFilesOnly(result));
@@ -22,11 +22,16 @@ export const useFileSystem = () => {
       .catch(err => {
         console.log(err.message, err.code);
       });
+  };
+
+  useEffect(() => {
+    getFiles();
   }, []);
 
   return {
     files,
     currentWorkingPath,
-    setCurrentWorkingPath
+    setCurrentWorkingPath,
+    getFiles
   };
 };

@@ -6,5 +6,6 @@ export enum HtmlToApp {
 
 export enum AppToHtml {
   UPDATE_EDITOR_VALUE = "updateEditorValue",
-  UPDATE_EDITOR_POSITION = "updateEditorPosition"
+  UPDATE_EDITOR_POSITION = "updateEditorPosition",
+  RESET = "reset"
 }

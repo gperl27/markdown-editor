@@ -2,37 +2,53 @@ import { NativeSyntheticEvent } from "react-native";
 import { WebViewMessage } from "react-native-webview/lib/WebViewTypes";
 import { HtmlToApp } from "../domain/editorIpc";
 import RNFS from "react-native-fs";
-import { Dispatch, useState } from "react";
+import { Dispatch, useContext, useState } from "react";
 import { useDebouncedCallback } from "use-debounce";
 import { useAsyncStorage } from "@react-native-community/async-storage";
 import { CacheKeys } from "../domain/cache";
 import { Action } from "../reducers";
 import { EditorUiTypes } from "../reducers/editorUi";
 import { IPosition } from "monaco-editor";
+import { FilesContext } from "../contexts/FilesContext";
 
 const DEBOUNCE = 500;
 
 interface Props {
-  path: string;
   dispatch: Dispatch<Action<EditorUiTypes>>;
+  onNewFile: () => void;
 }
 
 export const useEditor = (props: Props) => {
+  const { currentWorkingFile, setCurrentWorkingFile, getFiles } = useContext(
+    FilesContext
+  );
   const [value, setValue] = useState("");
   const [position, setPosition] = useState<IPosition | undefined>(undefined);
   const { mergeItem } = useAsyncStorage(CacheKeys.EDITOR_STATE);
 
   const getPathIfFirstSave = (content: string) => {
-    return props.path.includes("untitled")
-      ? RNFS.DocumentDirectoryPath + `/${content.slice(0, 10).trim()}.md`
-      : props.path;
+    if (!currentWorkingFile) {
+      return (
+        RNFS.DocumentDirectoryPath +
+        `/${content.slice(0, 10).replace("s", "")}.md`
+      );
+    }
+
+    return currentWorkingFile.path;
   };
 
   const [autoSaveOnChange] = useDebouncedCallback(async contents => {
+    if (contents.trim().length === 0) {
+      return;
+    }
+
     const path = getPathIfFirstSave(contents);
 
     await RNFS.writeFile(path, contents, "utf8");
-    await mergeItem(JSON.stringify({ path, position }));
+    const file = await RNFS.stat(path);
+    setCurrentWorkingFile(file);
+    await mergeItem(JSON.stringify({ file }));
+    getFiles();
   }, DEBOUNCE);
 
   const [autoSaveOnPositionChange] = useDebouncedCallback(async newPosition => {
@@ -64,6 +80,9 @@ export const useEditor = (props: Props) => {
       case HtmlToApp.TOGGLE_PREVIEW:
         props.dispatch({ type: EditorUiTypes.TOGGLE_SHOW_PREVIEW });
         break;
+      case "new_file":
+        props.onNewFile();
+        break;
       default:
         console.log(decodedMessage.value);
     }
@@ -85,6 +104,7 @@ export const useEditor = (props: Props) => {
     setValue,
     value,
     position,
+    setPosition,
     injectedJavascriptFactory
   };
 };

@@ -1,6 +1,7 @@
 import React, { ComponentProps, useEffect, useState } from 'react';
 import { Editor } from "@bit/gperl27.markdown-editor.editor";
 import { IPosition } from 'monaco-editor';
+import { COMMAND } from '@bit/gperl27.markdown-editor.editor/dist/Editor';
 
 type Parameters<T> = T extends (...args: infer T) => any ? T : never;
 type Editor = Parameters<ComponentProps<typeof Editor>["editorDidMount"]>[0];
@@ -16,13 +17,15 @@ enum HtmlToApp {
 
 enum AppToHtml {
   UPDATE_EDITOR_VALUE = "updateEditorValue",
-  UPDATE_EDITOR_POSITION = "updateEditorPosition"
+  UPDATE_EDITOR_POSITION = "updateEditorPosition",
+RESET = "reset"
 }
 
 const App = () => {
   const [editorRef, setEditorRef] = useState<Editor | undefined>(undefined)
   const [capturedValue, setCapturedValue] = useState<string | undefined>(undefined);
   const [capturedPositionValue, setCapturedPositionValue] = useState<IPosition | undefined>(undefined);
+  const [shouldReset, setShouldReset] = useState(false);
 
   const onSave = () => {
     const encodedMessage = JSON.stringify({
@@ -61,6 +64,15 @@ const App = () => {
     window.ReactNativeWebView && window.ReactNativeWebView.postMessage(encodedMessage);
   };
 
+  const onNewFile = (event: COMMAND) => {
+
+    console.log(event, 'new event from html')
+
+    const encodedMessage = JSON.stringify({ event });
+    // @ts-ignore
+    window.ReactNativeWebView && window.ReactNativeWebView.postMessage(encodedMessage);
+  };
+
   const onEditorDidMount: onEditorDidMount = editor => {
     editor.onDidChangeCursorPosition(onDidChangeCursorPosition);
 
@@ -77,7 +89,16 @@ const App = () => {
         editorRef.setPosition(capturedPositionValue)
       }
     }
-  }, [editorRef, capturedValue, capturedPositionValue])
+  }, [editorRef, capturedValue, capturedPositionValue]);
+
+  useEffect(() => {
+    if (editorRef) {
+      if (shouldReset) {
+        editorRef.setValue("");
+        setShouldReset(false);
+      }
+    }
+  }, [editorRef, shouldReset]);
 
   useEffect(() => {
       const onUpdateEditorValue = (event: CustomEvent<string>) => {
@@ -89,9 +110,18 @@ const App = () => {
         setCapturedPositionValue(event.detail.position);
       };
 
+      const onReset = () => {
+        setShouldReset(true);
+      };
+
       window.addEventListener(
           AppToHtml.UPDATE_EDITOR_VALUE,
           onUpdateEditorValue as EventListener,
+          false
+      );
+      window.addEventListener(
+          AppToHtml.RESET,
+          onReset,
           false
       );
       window.addEventListener(
@@ -109,6 +139,10 @@ const App = () => {
             AppToHtml.UPDATE_EDITOR_POSITION,
             onUpdateEditorPosition as EventListener
         );
+        window.removeEventListener(
+            AppToHtml.RESET,
+            onReset
+        );
       }
   }, []);
 
@@ -118,6 +152,7 @@ const App = () => {
       onChange={onChange}
       onSave={onSave}
       onTogglePreview={onTogglePreview}
+      onNewFile={onNewFile}
     />
   );
 };

@@ -1,6 +1,5 @@
 import RNFS from "react-native-fs";
 import StaticServer from "react-native-static-server";
-import { useEffect, useState } from "react";
 
 interface StaticServer {
   run(): Promise<string | void>;
@@ -10,7 +9,7 @@ interface StaticServer {
 
 const PORT = 8080;
 
-class LocalStaticServer implements StaticServer {
+export class LocalStaticServer implements StaticServer {
   private port = PORT;
   private path = RNFS.MainBundlePath + "/build";
   private server = new StaticServer(this.port, this.path, { localOnly: true });
@@ -27,24 +26,3 @@ class LocalStaticServer implements StaticServer {
     return this.server.isRunning();
   }
 }
-
-export const useLocalServer = () => {
-  const [uri, setUri] = useState<string | undefined>(undefined);
-  const server = new LocalStaticServer();
-
-  useEffect(() => {
-    server
-      .run()
-      .then((url: string) => setUri(url))
-      .catch(e => {
-        throw e;
-      });
-
-    return () => server.stop();
-  }, []);
-
-  return {
-    uri,
-    setUri
-  };
-};
