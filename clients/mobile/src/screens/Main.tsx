@@ -15,23 +15,32 @@ import {
   EditorUiTypes
 } from "../reducers/editorUi";
 import { WebView } from "react-native-webview";
-import React, { MutableRefObject, useContext, useRef, useReducer } from "react";
+import React, {
+  MutableRefObject,
+  useContext,
+  useRef,
+  useReducer,
+  ComponentProps,
+  useState
+} from "react";
 import Markdown from "react-native-markdown-renderer";
 import { iOSMarkdownStyleFactory } from "../lib/theme";
 import { useAsyncStorage } from "@react-native-community/async-storage";
 import { CacheKeys } from "../domain/cache";
 import { useEditor } from "../hooks/useEditor";
-import { FilesContext } from "../contexts/FilesContext";
-import RNFS, { ReadDirItem } from "react-native-fs";
+import { FilesContext, FileWithContent } from "../contexts/FilesContext";
 import { AppToHtml } from "../domain/editorIpc";
 import { useLocalServer } from "../hooks/useStaticServer";
+import { ListItem } from "react-native-elements";
+import Icon from "react-native-vector-icons/FontAwesome";
 
 export const Main = () => {
   const {
     setCurrentWorkingFile,
     currentWorkingFile,
-    getFiles,
-    files
+    files,
+    updateFile,
+    deleteFile
   } = useContext(FilesContext);
   const [state, dispatch] = useReducer(editorUiReducer, editorUiInitialState);
   const { uri } = useLocalServer();
@@ -42,17 +51,19 @@ export const Main = () => {
     removeItem
   } = useAsyncStorage(CacheKeys.EDITOR_STATE);
 
-  const onNewFile = () => {
+  const onNewFile = async () => {
     sendToEditor(AppToHtml.RESET);
-
     setCurrentWorkingFile(undefined);
-    removeItem().catch(e => console.log(e));
+    await updateFile("", undefined);
+    await removeItem();
   };
 
   const { onMessage, value, injectedJavascriptFactory } = useEditor({
     onNewFile,
     dispatch
   });
+
+  const [selectedUiButton, setSelectedUiButton] = useState(0);
 
   const onShowEditorOnly = () => {
     dispatch({ type: EditorUiTypes.SHOW_EDITOR_ONLY });
@@ -70,35 +81,18 @@ export const Main = () => {
     }
   };
 
-  const onGetFileContents = async (file: ReadDirItem) => {
+  const onGetFileContents = async (file: FileWithContent) => {
     setCurrentWorkingFile(file);
-
-    try {
-      const content = await RNFS.readFile(file.path);
-      sendToEditor(AppToHtml.UPDATE_EDITOR_VALUE, content);
-
-      mergeEditorCache(JSON.stringify({ file })).catch(e => {
-        console.log(e);
-      });
-    } catch (e) {
-      onNewFile();
-    }
+    sendToEditor(AppToHtml.UPDATE_EDITOR_VALUE, file.content);
   };
 
-  const onDeleteItem = (item: ReadDirItem) => {
-    RNFS.unlink(item.path)
-      .then(() => {
-        getFiles();
+  const onDeleteItem = async (item: FileWithContent) => {
+    await deleteFile(item);
 
-        if (item.path === (currentWorkingFile && currentWorkingFile.path)) {
-          console.log(item.path, currentWorkingFile, "ON DELETE");
-
-          onNewFile();
-        }
-
-        console.log("File deleted!");
-      })
-      .catch(console.log);
+    if (item.path === (currentWorkingFile && currentWorkingFile.path)) {
+      console.log(item.path, currentWorkingFile, "ON DELETE");
+      await onNewFile();
+    }
   };
 
   const onAppLoad = async () => {
@@ -123,21 +117,43 @@ export const Main = () => {
     return filepathSegments[filepathSegments.length - 1];
   };
 
+  const getListItemProps = (item: FileWithContent) => {
+    const fileOrFolderProps: Partial<ComponentProps<typeof ListItem>> = {};
+
+    if (item.isDirectory()) {
+      fileOrFolderProps.chevron = true;
+      fileOrFolderProps.leftIcon = <Icon name="folder" />;
+      fileOrFolderProps.onPress = () => console.log("open directory");
+    } else if (item.isFile()) {
+      fileOrFolderProps.leftIcon = <Icon name="file" />;
+      fileOrFolderProps.onPress = () => onGetFileContents(item);
+    }
+
+    return fileOrFolderProps;
+  };
+
+  const getNameFromFilePath = (filepath: string) => {
+    const fileChunks = filepath.split("/");
+
+    return fileChunks[fileChunks.length - 1];
+  };
+
   const renderFile = ({
     item
   }: {
-    item: ReadDirItem;
+    item: FileWithContent;
     index: number;
     separators: any;
   }) => {
     return (
-      <View style={styles.rowFront}>
-        <Button onPress={() => onGetFileContents(item)} title={item.name} />
-      </View>
+      <ListItem
+        title={getNameFromFilePath(item.path)}
+        {...getListItemProps(item)}
+      />
     );
   };
 
-  const hiddenItem = ({ item }: { item: ReadDirItem }) => {
+  const hiddenItem = ({ item }: { item: FileWithContent }) => {
     return (
       <TouchableHighlight
         style={styles.rowBack}
@@ -146,6 +162,20 @@ export const Main = () => {
         <Text>Delete</Text>
       </TouchableHighlight>
     );
+  };
+
+  const transformFileIndexToArrayLike = () => {
+    const transformedFiles: FileWithContent[] = [];
+
+    if (!files) {
+      return [];
+    }
+
+    Object.keys(files).forEach(key => {
+      transformedFiles.push(files[key]);
+    });
+
+    return transformedFiles;
   };
 
   if (!uri) {
@@ -162,7 +192,7 @@ export const Main = () => {
         {state.showDirectory && (
           <SwipeListView
             keyExtractor={(item, index) => index.toString()}
-            data={files}
+            data={transformFileIndexToArrayLike()}
             renderItem={renderFile}
             renderHiddenItem={hiddenItem}
             rightOpenValue={-75}
@@ -180,12 +210,13 @@ export const Main = () => {
             <Text style={iOSUIKit.title3EmphasizedObject}>{getFileName()}</Text>
           </View>
           <View style={styles.previewButtonGroup}>
-            <Button title={"Show Editor Only"} onPress={onShowEditorOnly} />
-            <Button
-              title={"Show Both"}
+            <Icon size={30} onPress={onShowEditorOnly} name="file-code-o" />
+            <Icon
+              size={30}
               onPress={() => dispatch({ type: EditorUiTypes.SHOW_BOTH })}
+              name="columns"
             />
-            <Button title={"Preview Only"} onPress={onShowPreviewOnly} />
+            <Icon size={30} onPress={onShowPreviewOnly} name="book" />
           </View>
           <Button title={"New"} onPress={onNewFile} />
         </View>
@@ -206,7 +237,7 @@ export const Main = () => {
               allowFileAccess={true}
               useWebKit={true}
               onMessage={onMessage}
-              onLoadEnd={onAppLoad}
+              // onLoadEnd={onAppLoad}
             />
           </View>
           {state.showMarkdownPreview && (
@@ -252,7 +283,8 @@ const styles = StyleSheet.create({
     justifyContent: "space-around"
   },
   previewButtonGroup: {
-    flexDirection: "row"
+    flexDirection: "row",
+    justifyContent: "space-around"
   },
   rowFront: {
     alignItems: "center",
