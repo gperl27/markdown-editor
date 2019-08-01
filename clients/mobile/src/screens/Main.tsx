@@ -207,6 +207,7 @@ export const Main = () => {
         <View style={styles.directoryList}>
           <Header
             backgroundColor={"lavender"}
+            // containerStyle={{ borderRightColor: "blue", borderRightWidth: 0.5 }}
             centerComponent={<Text h2={true}>Files</Text>}
           />
           <SwipeListView
@@ -218,8 +219,6 @@ export const Main = () => {
             leftOpenValue={75}
             stopRightSwipe={-150}
             stopLeftSwipe={1}
-            // disableLeftSwipe={false}
-            // disableRightSwipe={true}
             closeOnScroll={true}
             closeOnRowPress={true}
           />
@@ -227,11 +226,15 @@ export const Main = () => {
       )}
       <View style={styles.editorContainer}>
         <Header
-          containerStyle={{ justifyContent: "center" }}
+          containerStyle={{
+            justifyContent: "center",
+            borderLeftColor: "blue",
+            borderLeftWidth: 0.5
+          }}
           backgroundColor={"lavender"}
           leftComponent={
             <View>
-              <Icon size={30} name={"font"} />
+              <Icon name={"font"} />
             </View>
           }
           centerComponent={
@@ -247,13 +250,11 @@ export const Main = () => {
                     styles.icon,
                     isEditorOnly ? styles.iconSelected : {}
                   ]}
-                  size={30}
                   onPress={onShowEditorOnly}
                   name="file-code-o"
                 />
                 <Icon
                   iconStyle={[styles.icon, isBoth ? styles.iconSelected : {}]}
-                  size={30}
                   onPress={() => dispatch({ type: EditorUiTypes.SHOW_BOTH })}
                   name="columns"
                 />
@@ -262,7 +263,6 @@ export const Main = () => {
                     styles.icon,
                     isPreviewOnly ? styles.iconSelected : {}
                   ]}
-                  size={30}
                   onPress={onShowPreviewOnly}
                   name="book"
                 />

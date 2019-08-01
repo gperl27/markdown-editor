@@ -47,6 +47,7 @@ export const theme = {
     h3Style: iOSUIKit.title3Object
   },
   Icon: {
-    type: "font-awesome"
+    type: "font-awesome",
+    size: 30
   }
 };
