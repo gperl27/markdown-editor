@@ -1,10 +1,12 @@
 import {
   AppState,
   AppStateStatus,
+  Modal,
   SafeAreaView,
   ScrollView,
   StyleSheet,
   TouchableHighlight,
+  TouchableOpacity,
   View
 } from "react-native";
 import { SwipeListView } from "react-native-swipe-list-view";
@@ -20,7 +22,8 @@ import React, {
   useContext,
   useEffect,
   useReducer,
-  useRef
+  useRef,
+  useState
 } from "react";
 import Markdown from "react-native-markdown-renderer";
 import { iOSMarkdownStyleFactory } from "../lib/theme";
@@ -30,14 +33,22 @@ import { useEditor } from "../hooks/useEditor";
 import { FilesContext, FileWithContent } from "../contexts/FilesContext";
 import { AppToHtml } from "../domain/editorIpc";
 import { useLocalServer } from "../hooks/useStaticServer";
-import { Header, Icon, ListItem, Text } from "react-native-elements";
+import {
+  Header,
+  Icon,
+  ListItem,
+  Text,
+  Input,
+  Button
+} from "react-native-elements";
 
 export const Main = () => {
   const {
     setCurrentWorkingFile,
     currentWorkingFile,
     files,
-    deleteFile
+    deleteFile,
+    updateFilename
   } = useContext(FilesContext);
   const [state, dispatch] = useReducer(editorUiReducer, editorUiInitialState);
   const { uri } = useLocalServer();
@@ -58,6 +69,9 @@ export const Main = () => {
     onNewFile,
     dispatch
   });
+
+  const [isEditingFilename, setIsEditingFilename] = useState(false);
+  const [newFilename, setNewFilename] = useState("");
 
   const onShowEditorOnly = () => {
     dispatch({ type: EditorUiTypes.SHOW_EDITOR_ONLY });
@@ -258,7 +272,9 @@ export const Main = () => {
           }
           centerComponent={
             <View>
-              <Text h2={true}>{getFileName()}</Text>
+              <TouchableOpacity onPress={() => setIsEditingFilename(true)}>
+                <Text h2={true}>{getFileName()}</Text>
+              </TouchableOpacity>
             </View>
           }
           rightComponent={
@@ -319,6 +335,41 @@ export const Main = () => {
           )}
         </View>
       </View>
+      <Modal presentationStyle={"formSheet"} visible={isEditingFilename}>
+        <View
+          style={{
+            flex: 1,
+            padding: 25
+          }}
+        >
+          <View style={{ flex: 0.5 }} />
+          <View
+            style={{
+              flex: 1,
+              alignItems: "center",
+              justifyContent: "space-around"
+            }}
+          >
+            <Text h3={true}>Update Filename</Text>
+            <Input
+              onChangeText={setNewFilename}
+              defaultValue={currentWorkingFile && currentWorkingFile.name}
+              value={newFilename}
+            />
+            <Button
+              raised={true}
+              title={"Submit"}
+              onPress={() => updateFilename(newFilename)}
+            />
+          </View>
+          <View style={{ flex: 1 }} />
+          <Icon
+            containerStyle={{ position: "absolute", top: 25, right: 25 }}
+            onPress={() => setIsEditingFilename(false)}
+            name={"close"}
+          />
+        </View>
+      </Modal>
     </View>
   );
 };

@@ -13,6 +13,7 @@ interface State {
   setCurrentWorkingFile: (file?: FileWithContent) => void;
   updateFile: (contents: string, file?: FileWithContent) => void;
   deleteFile: (item: FileWithContent) => void;
+  updateFilename: (name: string) => void;
 }
 
 export interface FileWithContent extends ReadDirItem {
@@ -29,7 +30,8 @@ const defaultState: State = {
   setCurrentWorkingFile: () => undefined,
   setFiles: () => undefined,
   updateFile: () => undefined,
-  deleteFile: () => undefined
+  deleteFile: () => undefined,
+  updateFilename: () => undefined
 };
 
 export const FilesContext = createContext(defaultState);
@@ -67,6 +69,8 @@ export const FilesProvider = (props: Props) => {
   const getFiles = async () => {
     const results = await RNFS.readDir(RNFS.DocumentDirectoryPath);
 
+    console.log(results, "FILES");
+
     setFiles(await computedFiles(results));
   };
 
@@ -92,6 +96,10 @@ export const FilesProvider = (props: Props) => {
     };
   };
 
+  const normalizeFilename = (contents: string) => {
+    return contents.slice(0, 10).replace(/\s+/, "");
+  };
+
   const updateFile = async (
     contents: string,
     fileToUpdate?: FileWithContent
@@ -102,8 +110,7 @@ export const FilesProvider = (props: Props) => {
       if (contents.length > 0) {
         console.log("in unknown file");
         const fileName =
-          RNFS.DocumentDirectoryPath +
-          `/${(Math.random() * 1000).toString()}.md`;
+          RNFS.DocumentDirectoryPath + `/${normalizeFilename(contents)}.md`;
         await RNFS.writeFile(fileName, contents);
         const file = adaptStatFile(await RNFS.stat(fileName));
         updatedFiles[file.path] = {
@@ -129,6 +136,36 @@ export const FilesProvider = (props: Props) => {
     );
   };
 
+  const getExistingFilePrefix = (fileToProcess: FileWithContent) => {
+    return fileToProcess.path
+      .split("/")
+      .slice(0, -1)
+      .join("/");
+  };
+
+  const updateFilename = async (fileName: string) => {
+    if (currentWorkingFile) {
+      if (await RNFS.exists(currentWorkingFile.path)) {
+        const newFileName =
+          getExistingFilePrefix(currentWorkingFile) + `/${fileName}.md`;
+
+        await RNFS.moveFile(currentWorkingFile.path, newFileName);
+
+        const updatedFiles = Object.assign({}, files);
+
+        const newFile = {
+          ...currentWorkingFile,
+          path: newFileName
+        };
+
+        updatedFiles[newFileName] = newFile;
+        setCurrentWorkingFile(newFile);
+        delete updatedFiles[currentWorkingFile.path];
+        setFiles(updatedFiles);
+      }
+    }
+  };
+
   useEffect(() => {
     getFiles().catch(e => console.log(e));
   }, []);
@@ -141,7 +178,8 @@ export const FilesProvider = (props: Props) => {
         files,
         setFiles,
         deleteFile,
-        updateFile
+        updateFile,
+        updateFilename
       }}
     >
       {props.children}
