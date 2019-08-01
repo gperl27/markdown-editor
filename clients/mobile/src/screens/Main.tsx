@@ -1,6 +1,5 @@
 import {
   AppState,
-  AppStateStatic,
   AppStateStatus,
   Button,
   SafeAreaView,
@@ -44,7 +43,6 @@ export const Main = () => {
     setCurrentWorkingFile,
     currentWorkingFile,
     files,
-    updateFile,
     deleteFile
   } = useContext(FilesContext);
   const [state, dispatch] = useReducer(editorUiReducer, editorUiInitialState);
@@ -59,7 +57,6 @@ export const Main = () => {
   const onNewFile = async () => {
     sendToEditor(AppToHtml.RESET);
     setCurrentWorkingFile(undefined);
-    await updateFile("", undefined);
     await removeItem();
   };
 
@@ -230,13 +227,24 @@ export const Main = () => {
             <Text style={iOSUIKit.title3EmphasizedObject}>{getFileName()}</Text>
           </View>
           <View style={styles.previewButtonGroup}>
-            <Icon size={30} onPress={onShowEditorOnly} name="file-code-o" />
             <Icon
+              style={styles.icon}
+              size={30}
+              onPress={onShowEditorOnly}
+              name="file-code-o"
+            />
+            <Icon
+              style={styles.icon}
               size={30}
               onPress={() => dispatch({ type: EditorUiTypes.SHOW_BOTH })}
               name="columns"
             />
-            <Icon size={30} onPress={onShowPreviewOnly} name="book" />
+            <Icon
+              size={30}
+              style={styles.icon}
+              onPress={onShowPreviewOnly}
+              name="book"
+            />
           </View>
           <Button title={"New"} onPress={onNewFile} />
         </View>
@@ -321,6 +329,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "flex-end",
     paddingRight: 15
+  },
+  icon: {
+    paddingLeft: 5,
+    paddingRight: 5
   }
 });
 
