@@ -39,3 +39,14 @@ export const iOSMarkdownStyleFactory = () => {
     )
   };
 };
+
+export const theme = {
+  Text: {
+    h1Style: iOSUIKit.largeTitleEmphasizedObject,
+    h2Style: iOSUIKit.title3EmphasizedObject,
+    h3Style: iOSUIKit.title3Object
+  },
+  Icon: {
+    type: "font-awesome"
+  }
+};

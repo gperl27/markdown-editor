@@ -118,7 +118,7 @@ export const Main = () => {
 
     if (item.isDirectory()) {
       fileOrFolderProps.chevron = true;
-      fileOrFolderProps.leftIcon = <Icon type={"font-awesome"} name="folder" />;
+      fileOrFolderProps.leftIcon = <Icon name="folder" />;
       fileOrFolderProps.onPress = () => console.log("open directory");
     } else if (item.isFile()) {
       fileOrFolderProps.leftIcon = <Icon type="font-awesome" name="file" />;
@@ -216,7 +216,12 @@ export const Main = () => {
             renderHiddenItem={hiddenItem}
             rightOpenValue={-75}
             leftOpenValue={75}
-            disableRightSwipe={true}
+            stopRightSwipe={-150}
+            stopLeftSwipe={1}
+            // disableLeftSwipe={false}
+            // disableRightSwipe={true}
+            closeOnScroll={true}
+            closeOnRowPress={true}
           />
         </View>
       )}
@@ -226,7 +231,7 @@ export const Main = () => {
           backgroundColor={"lavender"}
           leftComponent={
             <View>
-              <Icon type={"font-awesome"} size={30} name={"font"} />
+              <Icon size={30} name={"font"} />
             </View>
           }
           centerComponent={
@@ -242,14 +247,12 @@ export const Main = () => {
                     styles.icon,
                     isEditorOnly ? styles.iconSelected : {}
                   ]}
-                  type={"font-awesome"}
                   size={30}
                   onPress={onShowEditorOnly}
                   name="file-code-o"
                 />
                 <Icon
                   iconStyle={[styles.icon, isBoth ? styles.iconSelected : {}]}
-                  type={"font-awesome"}
                   size={30}
                   onPress={() => dispatch({ type: EditorUiTypes.SHOW_BOTH })}
                   name="columns"
@@ -259,18 +262,12 @@ export const Main = () => {
                     styles.icon,
                     isPreviewOnly ? styles.iconSelected : {}
                   ]}
-                  type={"font-awesome"}
                   size={30}
                   onPress={onShowPreviewOnly}
                   name="book"
                 />
               </View>
-              <Icon
-                type={"font-awesome"}
-                size={32}
-                onPress={onNewFile}
-                name="edit"
-              />
+              <Icon size={32} onPress={onNewFile} name="edit" />
             </View>
           }
         />

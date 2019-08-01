@@ -3,15 +3,7 @@ import { SafeAreaView, StyleSheet, StatusBar } from "react-native";
 import { FilesProvider } from "./src/contexts/FilesContext";
 import { Main } from "./src/screens/Main";
 import { ThemeProvider } from "react-native-elements";
-import { iOSUIKit } from "react-native-typography";
-
-const theme = {
-  Text: {
-    h1Style: iOSUIKit.largeTitleEmphasizedObject,
-    h2Style: iOSUIKit.title3EmphasizedObject,
-    h3Style: iOSUIKit.title3Object
-  }
-};
+import { theme } from "./src/lib/theme";
 
 const App = () => {
   return (
