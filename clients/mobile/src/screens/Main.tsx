@@ -1,4 +1,7 @@
 import {
+  AppState,
+  AppStateStatic,
+  AppStateStatus,
   Button,
   SafeAreaView,
   ScrollView,
@@ -21,7 +24,8 @@ import React, {
   useRef,
   useReducer,
   ComponentProps,
-  useState
+  useState,
+  useEffect
 } from "react";
 import Markdown from "react-native-markdown-renderer";
 import { iOSMarkdownStyleFactory } from "../lib/theme";
@@ -33,6 +37,7 @@ import { AppToHtml } from "../domain/editorIpc";
 import { useLocalServer } from "../hooks/useStaticServer";
 import { ListItem } from "react-native-elements";
 import Icon from "react-native-vector-icons/FontAwesome";
+import { Cache } from "../domain/cache";
 
 export const Main = () => {
   const {
@@ -58,7 +63,7 @@ export const Main = () => {
     await removeItem();
   };
 
-  const { onMessage, value, injectedJavascriptFactory } = useEditor({
+  const { onMessage, value, position, injectedJavascriptFactory } = useEditor({
     onNewFile,
     dispatch
   });
@@ -102,7 +107,7 @@ export const Main = () => {
       return;
     }
 
-    const editorData = JSON.parse(cachedEditorState);
+    const editorData: Cache = JSON.parse(cachedEditorState);
 
     await onGetFileContents(editorData.file);
     sendToEditor(AppToHtml.UPDATE_EDITOR_POSITION, editorData.position);
@@ -163,6 +168,21 @@ export const Main = () => {
       </TouchableHighlight>
     );
   };
+
+  useEffect(() => {
+    const handleAppStateChange = (nextAppState: AppStateStatus) => {
+      if (nextAppState === "inactive") {
+        console.log("the app is closed");
+        mergeEditorCache(
+          JSON.stringify({ file: currentWorkingFile, position })
+        ).catch(e => console.log(e));
+      }
+    };
+
+    AppState.addEventListener("change", handleAppStateChange);
+
+    return () => AppState.removeEventListener("change", handleAppStateChange);
+  });
 
   const transformFileIndexToArrayLike = () => {
     const transformedFiles: FileWithContent[] = [];
@@ -237,7 +257,7 @@ export const Main = () => {
               allowFileAccess={true}
               useWebKit={true}
               onMessage={onMessage}
-              // onLoadEnd={onAppLoad}
+              onLoadEnd={onAppLoad}
             />
           </View>
           {state.showMarkdownPreview && (
