@@ -144,14 +144,14 @@ export const FilesProvider = (props: Props) => {
   };
 
   const updateFilename = async (fileName: string) => {
+    const updatedFiles = Object.assign({}, files);
+
     if (currentWorkingFile) {
       if (await RNFS.exists(currentWorkingFile.path)) {
         const newFileName =
           getExistingFilePrefix(currentWorkingFile) + `/${fileName}.md`;
 
         await RNFS.moveFile(currentWorkingFile.path, newFileName);
-
-        const updatedFiles = Object.assign({}, files);
 
         const newFile = {
           ...currentWorkingFile,
@@ -163,6 +163,17 @@ export const FilesProvider = (props: Props) => {
         delete updatedFiles[currentWorkingFile.path];
         setFiles(updatedFiles);
       }
+    } else {
+      const newFileName = RNFS.DocumentDirectoryPath + `/${fileName}.md`;
+
+      await RNFS.writeFile(newFileName, "");
+      const file = adaptStatFile(await RNFS.stat(newFileName));
+      updatedFiles[file.path] = {
+        ...file,
+        content: ""
+      };
+      setCurrentWorkingFile(updatedFiles[file.path]);
+      setFiles(updatedFiles);
     }
   };
 
