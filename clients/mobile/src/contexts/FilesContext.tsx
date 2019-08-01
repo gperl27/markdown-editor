@@ -74,9 +74,7 @@ export const FilesProvider = (props: Props) => {
     await RNFS.unlink(item.path);
     if (files) {
       const updatedFiles = Object.assign({}, files);
-      console.log(Object.keys(updatedFiles).length, "BEFORE DELETE");
       delete updatedFiles[item.path];
-      console.log(Object.keys(updatedFiles).length, "AFTER DELETE");
 
       setFiles(updatedFiles);
     }

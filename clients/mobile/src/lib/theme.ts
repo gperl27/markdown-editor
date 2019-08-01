@@ -22,7 +22,7 @@ const decorateTextMarginBasedOnFontSize = (
 export const iOSMarkdownStyleFactory = () => {
   return {
     text: {
-      fontFamily: iOSUIKit.largeTitleEmphasizedObject.fontFamily,
+      fontFamily: iOSUIKit.largeTitleEmphasizedObject.fontFamily
     },
     heading1: decorateTextMarginBasedOnFontSize(
       iOSUIKit.largeTitleEmphasizedObject,

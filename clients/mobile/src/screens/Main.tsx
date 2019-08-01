@@ -1,16 +1,13 @@
 import {
   AppState,
   AppStateStatus,
-  Button,
   SafeAreaView,
   ScrollView,
   StyleSheet,
-  Text,
   TouchableHighlight,
   View
 } from "react-native";
 import { SwipeListView } from "react-native-swipe-list-view";
-import { iOSUIKit } from "react-native-typography";
 import {
   editorUiInitialState,
   editorUiReducer,
@@ -23,7 +20,6 @@ import React, {
   useRef,
   useReducer,
   ComponentProps,
-  useState,
   useEffect
 } from "react";
 import Markdown from "react-native-markdown-renderer";
@@ -34,8 +30,8 @@ import { useEditor } from "../hooks/useEditor";
 import { FilesContext, FileWithContent } from "../contexts/FilesContext";
 import { AppToHtml } from "../domain/editorIpc";
 import { useLocalServer } from "../hooks/useStaticServer";
-import { ListItem } from "react-native-elements";
-import Icon from "react-native-vector-icons/FontAwesome";
+import { ListItem, Header, Text, Icon } from "react-native-elements";
+// import Icon from "react-native-vector-icons/FontAwesome";
 import { Cache } from "../domain/cache";
 
 export const Main = () => {
@@ -64,8 +60,6 @@ export const Main = () => {
     onNewFile,
     dispatch
   });
-
-  const [selectedUiButton, setSelectedUiButton] = useState(0);
 
   const onShowEditorOnly = () => {
     dispatch({ type: EditorUiTypes.SHOW_EDITOR_ONLY });
@@ -124,10 +118,10 @@ export const Main = () => {
 
     if (item.isDirectory()) {
       fileOrFolderProps.chevron = true;
-      fileOrFolderProps.leftIcon = <Icon name="folder" />;
+      fileOrFolderProps.leftIcon = <Icon type={"font-awesome"} name="folder" />;
       fileOrFolderProps.onPress = () => console.log("open directory");
     } else if (item.isFile()) {
-      fileOrFolderProps.leftIcon = <Icon name="file" />;
+      fileOrFolderProps.leftIcon = <Icon type="font-awesome" name="file" />;
       fileOrFolderProps.onPress = () => onGetFileContents(item);
     }
 
@@ -195,6 +189,10 @@ export const Main = () => {
     return transformedFiles;
   };
 
+  const isPreviewOnly = state.showMarkdownPreview && !state.showEditor;
+  const isBoth = state.showMarkdownPreview && state.showEditor;
+  const isEditorOnly = state.showEditor && !state.showMarkdownPreview;
+
   if (!uri) {
     return (
       <SafeAreaView style={styles.safeAreaView}>
@@ -205,8 +203,12 @@ export const Main = () => {
 
   return (
     <View style={styles.container}>
-      <View style={styles.directoryList}>
-        {state.showDirectory && (
+      {state.showDirectory && (
+        <View style={styles.directoryList}>
+          <Header
+            backgroundColor={"lavender"}
+            centerComponent={<Text h2={true}>Files</Text>}
+          />
           <SwipeListView
             keyExtractor={(item, index) => index.toString()}
             data={transformFileIndexToArrayLike()}
@@ -216,38 +218,62 @@ export const Main = () => {
             leftOpenValue={75}
             disableRightSwipe={true}
           />
-        )}
-      </View>
-      <View style={styles.editorContainer}>
-        <View style={styles.toolbar}>
-          <View>
-            <Button onPress={() => {}} title={"Change Theme"} />
-          </View>
-          <View>
-            <Text style={iOSUIKit.title3EmphasizedObject}>{getFileName()}</Text>
-          </View>
-          <View style={styles.previewButtonGroup}>
-            <Icon
-              style={styles.icon}
-              size={30}
-              onPress={onShowEditorOnly}
-              name="file-code-o"
-            />
-            <Icon
-              style={styles.icon}
-              size={30}
-              onPress={() => dispatch({ type: EditorUiTypes.SHOW_BOTH })}
-              name="columns"
-            />
-            <Icon
-              size={30}
-              style={styles.icon}
-              onPress={onShowPreviewOnly}
-              name="book"
-            />
-          </View>
-          <Button title={"New"} onPress={onNewFile} />
         </View>
+      )}
+      <View style={styles.editorContainer}>
+        <Header
+          containerStyle={{ justifyContent: "center" }}
+          backgroundColor={"lavender"}
+          leftComponent={
+            <View>
+              <Icon type={"font-awesome"} size={30} name={"font"} />
+            </View>
+          }
+          centerComponent={
+            <View>
+              <Text h2={true}>{getFileName()}</Text>
+            </View>
+          }
+          rightComponent={
+            <View style={styles.rightToolbar}>
+              <View style={styles.previewButtonGroup}>
+                <Icon
+                  iconStyle={[
+                    styles.icon,
+                    isEditorOnly ? styles.iconSelected : {}
+                  ]}
+                  type={"font-awesome"}
+                  size={30}
+                  onPress={onShowEditorOnly}
+                  name="file-code-o"
+                />
+                <Icon
+                  iconStyle={[styles.icon, isBoth ? styles.iconSelected : {}]}
+                  type={"font-awesome"}
+                  size={30}
+                  onPress={() => dispatch({ type: EditorUiTypes.SHOW_BOTH })}
+                  name="columns"
+                />
+                <Icon
+                  iconStyle={[
+                    styles.icon,
+                    isPreviewOnly ? styles.iconSelected : {}
+                  ]}
+                  type={"font-awesome"}
+                  size={30}
+                  onPress={onShowPreviewOnly}
+                  name="book"
+                />
+              </View>
+              <Icon
+                type={"font-awesome"}
+                size={32}
+                onPress={onNewFile}
+                name="edit"
+              />
+            </View>
+          }
+        />
         <View style={styles.innerEditorContainer}>
           <View style={state.showEditor ? styles.webViewContainer : {}}>
             <WebView
@@ -312,7 +338,8 @@ const styles = StyleSheet.create({
   },
   previewButtonGroup: {
     flexDirection: "row",
-    justifyContent: "space-around"
+    justifyContent: "center",
+    marginRight: 50
   },
   rowFront: {
     alignItems: "center",
@@ -331,8 +358,14 @@ const styles = StyleSheet.create({
     paddingRight: 15
   },
   icon: {
-    paddingLeft: 5,
-    paddingRight: 5
+    marginRight: 12,
+    marginLeft: 12
+  },
+  iconSelected: {
+    color: "yellow"
+  },
+  rightToolbar: {
+    flexDirection: "row"
   }
 });
 
