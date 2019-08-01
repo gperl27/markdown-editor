@@ -6,7 +6,8 @@ export enum EditorUiTypes {
   SHOW_BOTH,
   TOGGLE_SHOW_EDITOR,
   TOGGLE_SHOW_PREVIEW,
-  TOGGLE_SHOW_DIRECTORY
+  TOGGLE_SHOW_DIRECTORY,
+  LOAD
 }
 
 interface State {
@@ -58,6 +59,11 @@ export const editorUiReducer = (
       return {
         ...state,
         showDirectory: !state.showDirectory
+      };
+    case EditorUiTypes.LOAD:
+      return {
+        ...state,
+        ...action.payload
       };
     default:
       console.log("Improper type dispatched, resetting");

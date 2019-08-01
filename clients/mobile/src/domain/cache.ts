@@ -7,4 +7,5 @@ export enum CacheKeys {
 export interface Cache {
   file: FileWithContent;
   position: any;
+  viewState: string;
 }

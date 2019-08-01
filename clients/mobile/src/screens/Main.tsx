@@ -15,24 +15,22 @@ import {
 } from "../reducers/editorUi";
 import { WebView } from "react-native-webview";
 import React, {
+  ComponentProps,
   MutableRefObject,
   useContext,
-  useRef,
+  useEffect,
   useReducer,
-  ComponentProps,
-  useEffect
+  useRef
 } from "react";
 import Markdown from "react-native-markdown-renderer";
 import { iOSMarkdownStyleFactory } from "../lib/theme";
 import { useAsyncStorage } from "@react-native-community/async-storage";
-import { CacheKeys } from "../domain/cache";
+import { Cache, CacheKeys } from "../domain/cache";
 import { useEditor } from "../hooks/useEditor";
 import { FilesContext, FileWithContent } from "../contexts/FilesContext";
 import { AppToHtml } from "../domain/editorIpc";
 import { useLocalServer } from "../hooks/useStaticServer";
-import { ListItem, Header, Text, Icon } from "react-native-elements";
-// import Icon from "react-native-vector-icons/FontAwesome";
-import { Cache } from "../domain/cache";
+import { Header, Icon, ListItem, Text } from "react-native-elements";
 
 export const Main = () => {
   const {
@@ -165,7 +163,11 @@ export const Main = () => {
       if (nextAppState === "inactive") {
         console.log("the app is closed");
         mergeEditorCache(
-          JSON.stringify({ file: currentWorkingFile, position })
+          JSON.stringify({
+            file: currentWorkingFile,
+            position,
+            viewState: state
+          })
         ).catch(e => console.log(e));
       }
     };
@@ -193,6 +195,24 @@ export const Main = () => {
   const isBoth = state.showMarkdownPreview && state.showEditor;
   const isEditorOnly = state.showEditor && !state.showMarkdownPreview;
 
+  useEffect(() => {
+    const loadStateFromCache = async () => {
+      const cachedEditorState = await getEditorCache();
+
+      if (!cachedEditorState) {
+        return;
+      }
+
+      const editorData: Cache = JSON.parse(cachedEditorState);
+
+      dispatch({ type: EditorUiTypes.LOAD, payload: editorData.viewState });
+    };
+
+    loadStateFromCache().catch(e =>
+      console.log(e, "could not load editor state from cache")
+    );
+  }, [getEditorCache]);
+
   if (!uri) {
     return (
       <SafeAreaView style={styles.safeAreaView}>
@@ -207,7 +227,6 @@ export const Main = () => {
         <View style={styles.directoryList}>
           <Header
             backgroundColor={"lavender"}
-            // containerStyle={{ borderRightColor: "blue", borderRightWidth: 0.5 }}
             centerComponent={<Text h2={true}>Files</Text>}
           />
           <SwipeListView
