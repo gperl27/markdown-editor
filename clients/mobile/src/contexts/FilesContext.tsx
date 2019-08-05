@@ -153,7 +153,9 @@ export const FilesProvider = (props: Props) => {
   const syncFiles = async (filesToSync: FileIndex) => {
     return Promise.all(
       Object.keys(filesToSync).map(filepath => {
-        return RNFS.writeFile(filepath, filesToSync[filepath].content || "");
+        if (filesToSync[filepath].isFile()) {
+          return RNFS.writeFile(filepath, filesToSync[filepath].content || "");
+        }
       })
     );
   };
