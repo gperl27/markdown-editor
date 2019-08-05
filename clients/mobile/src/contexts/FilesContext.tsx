@@ -14,10 +14,11 @@ interface State {
   updateFile: (contents: string, file?: FileWithContent) => void;
   deleteFile: (item: FileWithContent) => void;
   updateFilename: (name: string) => void;
+  newFolder: (folderName: string) => void;
 }
 
 export interface FileWithContent extends ReadDirItem {
-  content: string;
+  content?: string;
 }
 
 export interface FileIndex {
@@ -31,20 +32,27 @@ const defaultState: State = {
   setFiles: () => undefined,
   updateFile: () => undefined,
   deleteFile: () => undefined,
-  updateFilename: () => undefined
+  updateFilename: () => undefined,
+  newFolder: () => undefined
 };
 
 export const FilesContext = createContext(defaultState);
 
 const getReadableFilesOnly = (files: ReadDirItem[]) => {
-  return files.filter(file => file.name.match(/\.(txt|md)$/i));
+  return files.filter(file => {
+    return (
+      file.name.match(/\.(txt|md)$/i) ||
+      (file.name !== "RCTAsyncLocalStorage_V1" && file.isDirectory())
+    );
+  });
 };
 
 const generateFileIndex = async (
   filesToIndex: ReadDirItem[]
 ): Promise<FileIndex> => {
+  const filesOnly = filesToIndex.filter(file => file.isFile());
   const filesContents = await Promise.all(
-    filesToIndex.map(file => RNFS.readFile(file.path))
+    filesOnly.map(file => RNFS.readFile(file.path))
   );
 
   let fileIndex: FileIndex = {};
@@ -69,7 +77,9 @@ export const FilesProvider = (props: Props) => {
   const getFiles = async () => {
     const results = await RNFS.readDir(RNFS.DocumentDirectoryPath);
 
-    console.log(results, "FILES");
+    console.log(results, "results");
+    const a = await computedFiles(results);
+    console.log(a, "WTF");
 
     setFiles(await computedFiles(results));
   };
@@ -128,10 +138,22 @@ export const FilesProvider = (props: Props) => {
     syncFiles(updatedFiles).then(() => console.log("filesync complete"));
   };
 
+  const newFolder = async (folderName: string) => {
+    const folder = RNFS.DocumentDirectoryPath + `/${folderName}`;
+
+    await RNFS.mkdir(folder);
+
+    const folderFromFS = adaptStatFile(await RNFS.stat(folder));
+    const updatedFiles = Object.assign({}, files);
+
+    updatedFiles[folder] = folderFromFS;
+    setFiles(updatedFiles);
+  };
+
   const syncFiles = async (filesToSync: FileIndex) => {
     return Promise.all(
       Object.keys(filesToSync).map(filepath => {
-        return RNFS.writeFile(filepath, filesToSync[filepath].content);
+        return RNFS.writeFile(filepath, filesToSync[filepath].content || "");
       })
     );
   };
@@ -190,7 +212,8 @@ export const FilesProvider = (props: Props) => {
         setFiles,
         deleteFile,
         updateFile,
-        updateFilename
+        updateFilename,
+        newFolder
       }}
     >
       {props.children}

@@ -41,6 +41,7 @@ import {
   Input,
   Button
 } from "react-native-elements";
+import * as Animatable from "react-native-animatable";
 
 export const Main = () => {
   const {
@@ -48,7 +49,8 @@ export const Main = () => {
     currentWorkingFile,
     files,
     deleteFile,
-    updateFilename
+    updateFilename,
+    newFolder
   } = useContext(FilesContext);
   const [state, dispatch] = useReducer(editorUiReducer, editorUiInitialState);
   const { uri } = useLocalServer();
@@ -72,6 +74,7 @@ export const Main = () => {
 
   const [isEditingFilename, setIsEditingFilename] = useState(false);
   const [newFilename, setNewFilename] = useState("");
+  const [newFolderPath, setNewFolderPath] = useState("");
 
   const onShowEditorOnly = () => {
     dispatch({ type: EditorUiTypes.SHOW_EDITOR_ONLY });
@@ -242,7 +245,12 @@ export const Main = () => {
           <Header
             backgroundColor={"lavender"}
             centerComponent={<Text h2={true}>Files</Text>}
+            rightComponent={<Icon name={"files-o"} />}
           />
+          <View>
+            <Input value={newFolderPath} onChangeText={setNewFolderPath} />
+            <Button onPress={() => newFolder(newFolderPath)} title={"Submit"} />
+          </View>
           <SwipeListView
             keyExtractor={(item, index) => index.toString()}
             data={transformFileIndexToArrayLike()}
@@ -307,7 +315,9 @@ export const Main = () => {
           }
         />
         <View style={styles.innerEditorContainer}>
-          <View style={state.showEditor ? styles.webViewContainer : {}}>
+          <View
+            style={state.showEditor ? styles.webViewContainer : { flex: 0 }}
+          >
             <WebView
               ref={ref as MutableRefObject<WebView>}
               hideKeyboardAccessoryView={true}
@@ -326,13 +336,18 @@ export const Main = () => {
               onLoadEnd={onAppLoad}
             />
           </View>
-          {state.showMarkdownPreview && (
-            <View style={styles.markdownContainer}>
-              <ScrollView>
-                <Markdown style={markdownStyles}>{value}</Markdown>
-              </ScrollView>
-            </View>
-          )}
+          <Animatable.View
+            transition="flex"
+            style={
+              state.showMarkdownPreview ? styles.markdownContainer : { flex: 0 }
+            }
+          >
+            <ScrollView
+              style={!state.showMarkdownPreview && { display: "none" }}
+            >
+              <Markdown style={markdownStyles}>{value}</Markdown>
+            </ScrollView>
+          </Animatable.View>
         </View>
       </View>
       <Modal presentationStyle={"formSheet"} visible={isEditingFilename}>
