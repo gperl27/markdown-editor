@@ -21,8 +21,13 @@ export interface FileWithContent extends ReadDirItem {
   content?: string;
 }
 
+export interface Folder extends ReadDirItem {
+  files: FileIndex;
+  open: boolean;
+}
+
 export interface FileIndex {
-  [key: string]: FileWithContent;
+  [key: string]: FileWithContent | Folder;
 }
 
 const defaultState: State = {
@@ -38,6 +43,10 @@ const defaultState: State = {
 
 export const FilesContext = createContext(defaultState);
 
+const getFilesFromDir = (folderPath: string = "") => {
+  return RNFS.readDir(RNFS.DocumentDirectoryPath + `/${folderPath}`);
+};
+
 const getReadableFilesOnly = (files: ReadDirItem[]) => {
   return files.filter(file => {
     return (
@@ -50,23 +59,40 @@ const getReadableFilesOnly = (files: ReadDirItem[]) => {
 const generateFileIndex = async (
   filesToIndex: ReadDirItem[]
 ): Promise<FileIndex> => {
-  const filesOnly = filesToIndex.filter(file => file.isFile());
-  const filesContents = await Promise.all(
-    filesOnly.map(file => RNFS.readFile(file.path))
-  );
-
   let fileIndex: FileIndex = {};
-  filesToIndex.forEach((file, index) => {
-    fileIndex[file.path] = {
-      ...file,
-      content: filesContents[index]
-    };
-  });
+
+  for (let i = 0; i < filesToIndex.length; i++) {
+    const file = filesToIndex[i];
+
+    if (file.isFile()) {
+      const content = await RNFS.readFile(file.path);
+
+      fileIndex[file.path] = {
+        ...file,
+        content
+      };
+    } else if (file.isDirectory()) {
+      fileIndex[file.path] = {
+        ...file,
+        open: false,
+        files: await generateFileIndex(await RNFS.readDir(file.path))
+      };
+    }
+  }
+
   return fileIndex;
 };
 
 const computedFiles = async (files: ReadDirItem[]) =>
   await generateFileIndex(getReadableFilesOnly(files));
+
+function isFile(file: any): file is FileWithContent {
+  return file.isFile();
+}
+
+function isDirectory(file: any): file is ReadDirItem {
+  return file.isDirectory() && file.content !== undefined;
+}
 
 export const FilesProvider = (props: Props) => {
   const [currentWorkingFile, setCurrentWorkingFile] = useState<
@@ -75,11 +101,7 @@ export const FilesProvider = (props: Props) => {
   const [files, setFiles] = useState<FileIndex | undefined>(undefined);
 
   const getFiles = async () => {
-    const results = await RNFS.readDir(RNFS.DocumentDirectoryPath);
-
-    console.log(results, "results");
-    const a = await computedFiles(results);
-    console.log(a, "WTF");
+    const results = await getFilesFromDir();
 
     setFiles(await computedFiles(results));
   };
@@ -118,7 +140,6 @@ export const FilesProvider = (props: Props) => {
 
     if (!fileToUpdate) {
       if (contents.length > 0) {
-        console.log("in unknown file");
         const fileName =
           RNFS.DocumentDirectoryPath + `/${normalizeFilename(contents)}.md`;
         await RNFS.writeFile(fileName, contents);
@@ -130,8 +151,11 @@ export const FilesProvider = (props: Props) => {
         setCurrentWorkingFile(updatedFiles[file.path]);
       }
     } else {
-      console.log(updatedFiles[fileToUpdate.path], "file exists");
-      updatedFiles[fileToUpdate.path].content = contents;
+      const file = updatedFiles[fileToUpdate.path];
+
+      if (isFile(file)) {
+        fileToUpdate.content = contents;
+      }
     }
 
     setFiles(updatedFiles);
@@ -153,8 +177,10 @@ export const FilesProvider = (props: Props) => {
   const syncFiles = async (filesToSync: FileIndex) => {
     return Promise.all(
       Object.keys(filesToSync).map(filepath => {
-        if (filesToSync[filepath].isFile()) {
-          return RNFS.writeFile(filepath, filesToSync[filepath].content || "");
+        const file = filesToSync[filepath];
+
+        if (isFile(file)) {
+          return RNFS.writeFile(filepath, file.content || "");
         }
       })
     );

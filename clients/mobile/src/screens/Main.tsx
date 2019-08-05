@@ -30,7 +30,12 @@ import { iOSMarkdownStyleFactory } from "../lib/theme";
 import { useAsyncStorage } from "@react-native-community/async-storage";
 import { Cache, CacheKeys } from "../domain/cache";
 import { useEditor } from "../hooks/useEditor";
-import { FilesContext, FileWithContent } from "../contexts/FilesContext";
+import {
+  FileIndex,
+  FilesContext,
+  FileWithContent,
+  Folder
+} from "../contexts/FilesContext";
 import { AppToHtml } from "../domain/editorIpc";
 import { useLocalServer } from "../hooks/useStaticServer";
 import {
@@ -131,6 +136,14 @@ export const Main = () => {
   const getListItemProps = (item: FileWithContent) => {
     const fileOrFolderProps: Partial<ComponentProps<typeof ListItem>> = {};
 
+    console.log(item.depth, "DEPTH");
+
+    const commonProps: Partial<ComponentProps<typeof ListItem>> = {
+      containerStyle: {
+        marginLeft: item.depth * 10
+      }
+    };
+
     if (item.isDirectory()) {
       fileOrFolderProps.chevron = true;
       fileOrFolderProps.leftIcon = <Icon name="folder" />;
@@ -140,7 +153,10 @@ export const Main = () => {
       fileOrFolderProps.onPress = () => onGetFileContents(item);
     }
 
-    return fileOrFolderProps;
+    return {
+      ...commonProps,
+      ...fileOrFolderProps
+    };
   };
 
   const getNameFromFilePath = (filepath: string) => {
@@ -194,15 +210,30 @@ export const Main = () => {
     return () => AppState.removeEventListener("change", handleAppStateChange);
   });
 
-  const transformFileIndexToArrayLike = () => {
-    const transformedFiles: FileWithContent[] = [];
+  const transformFileIndexToArrayLike = (
+    filesToTransform?: FileIndex,
+    depth?: number = 0
+  ) => {
+    const transformedFiles: (FileWithContent | Folder)[] = [];
 
-    if (!files) {
+    if (!filesToTransform) {
       return [];
     }
 
-    Object.keys(files).forEach(key => {
-      transformedFiles.push(files[key]);
+    Object.keys(filesToTransform).forEach(key => {
+      transformedFiles.push({
+        ...filesToTransform[key],
+        depth
+      });
+
+      if (filesToTransform[key].files) {
+        transformedFiles.push(
+          ...transformFileIndexToArrayLike(
+            filesToTransform[key].files,
+            depth + 1
+          )
+        );
+      }
     });
 
     return transformedFiles;
@@ -253,7 +284,7 @@ export const Main = () => {
           </View>
           <SwipeListView
             keyExtractor={(item, index) => index.toString()}
-            data={transformFileIndexToArrayLike()}
+            data={transformFileIndexToArrayLike(files)}
             renderItem={renderFile}
             renderHiddenItem={hiddenItem}
             rightOpenValue={-75}
