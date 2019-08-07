@@ -160,16 +160,22 @@ export const FilesProvider = (props: Props) => {
         setCurrentWorkingFile(updatedFiles[file.path]);
       }
       setFiles(updatedFiles);
-      syncFiles(updatedFiles).then(() => console.log("filesync complete new file"));
+      syncFiles(updatedFiles).then(() =>
+        console.log("filesync complete new file")
+      );
     } else {
       const updatedFile = {
         ...fileToUpdate,
         content: contents
       };
 
-      const newFiles = updateNestedFile(files, updatedFile);
-      setFiles(newFiles);
-      syncFiles(newFiles).then(() => console.log("filesync complete old file"));
+      if (files) {
+        const newFiles = updateNestedFile(files, updatedFile);
+        setFiles(newFiles);
+        syncFiles(newFiles).then(() =>
+          console.log("filesync complete old file")
+        );
+      }
     }
   };
 
@@ -179,14 +185,15 @@ export const FilesProvider = (props: Props) => {
   ) => {
     Object.keys(oldFilesWithState).forEach(key => {
       if (isDirectory(oldFilesWithState[key])) {
-        if (updatedFiles[key] && isDirectory(updatedFiles[key])) {
-          updatedFiles[key].open = oldFilesWithState[key].open;
+        const newFile = updatedFiles[key];
+        const oldFile = oldFilesWithState[key];
+        if (newFile && isDirectory(newFile) && isDirectory(oldFile)) {
+          newFile.open = oldFile.open;
 
-          if (updatedFiles[key].files) {
-            updatedFiles[key].files = mapStateToNested(
-              oldFilesWithState[key].files,
-              updatedFiles[key].files
-            );
+          if (newFile.files) {
+            newFile.files = mapStateToNested(oldFile.files, newFile.files);
+
+            updatedFiles[key] = newFile;
           }
         }
       }
@@ -211,7 +218,7 @@ export const FilesProvider = (props: Props) => {
     setFiles(updatedFilesWithState);
   };
 
-  const syncFiles = async (filesToSync: FileIndex) => {
+  const syncFiles = async (filesToSync: FileIndex): Promise<any> => {
     return Promise.all(
       Object.keys(filesToSync).map(filepath => {
         const file = filesToSync[filepath];
@@ -245,11 +252,13 @@ export const FilesProvider = (props: Props) => {
       await RNFS.writeFile(newFileName, "");
     }
 
-    const results = await getFilesFromDir();
-    const updatedFiles = await computedFiles(results);
+    if (files) {
+      const results = await getFilesFromDir();
+      const updatedFiles = await computedFiles(results);
 
-    const updatedFilesWithState = mapStateToNested(files, updatedFiles);
-    setFiles(updatedFilesWithState);
+      const updatedFilesWithState = mapStateToNested(files, updatedFiles);
+      setFiles(updatedFilesWithState);
+    }
   };
 
   const updateNestedFile = (
