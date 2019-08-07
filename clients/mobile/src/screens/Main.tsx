@@ -48,6 +48,12 @@ import {
 } from "react-native-elements";
 import * as Animatable from "react-native-animatable";
 
+type ListViewItem = (FileWithContent | Folder) & {
+  depth: number;
+};
+
+type ListViewData = ListViewItem[];
+
 export const Main = () => {
   const {
     setCurrentWorkingFile,
@@ -55,7 +61,8 @@ export const Main = () => {
     files,
     deleteFile,
     updateFilename,
-    newFolder
+    newFolder,
+    toggleFolderOpen
   } = useContext(FilesContext);
   const [state, dispatch] = useReducer(editorUiReducer, editorUiInitialState);
   const { uri } = useLocalServer();
@@ -106,7 +113,6 @@ export const Main = () => {
     await deleteFile(item);
 
     if (item.path === (currentWorkingFile && currentWorkingFile.path)) {
-      console.log(item.path, currentWorkingFile, "ON DELETE");
       await onNewFile();
     }
   };
@@ -133,10 +139,8 @@ export const Main = () => {
     return filepathSegments[filepathSegments.length - 1];
   };
 
-  const getListItemProps = (item: FileWithContent) => {
+  const getListItemProps = (item: ListViewItem) => {
     const fileOrFolderProps: Partial<ComponentProps<typeof ListItem>> = {};
-
-    console.log(item.depth, "DEPTH");
 
     const commonProps: Partial<ComponentProps<typeof ListItem>> = {
       containerStyle: {
@@ -147,7 +151,7 @@ export const Main = () => {
     if (item.isDirectory()) {
       fileOrFolderProps.chevron = true;
       fileOrFolderProps.leftIcon = <Icon name="folder" />;
-      fileOrFolderProps.onPress = () => console.log("open directory");
+      fileOrFolderProps.onPress = () => toggleFolderOpen(item);
     } else if (item.isFile()) {
       fileOrFolderProps.leftIcon = <Icon type="font-awesome" name="file" />;
       fileOrFolderProps.onPress = () => onGetFileContents(item);
@@ -168,7 +172,7 @@ export const Main = () => {
   const renderFile = ({
     item
   }: {
-    item: FileWithContent;
+    item: ListViewItem;
     index: number;
     separators: any;
   }) => {
@@ -212,9 +216,9 @@ export const Main = () => {
 
   const transformFileIndexToArrayLike = (
     filesToTransform?: FileIndex,
-    depth?: number = 0
+    depth: number = 0
   ) => {
-    const transformedFiles: (FileWithContent | Folder)[] = [];
+    const transformedFiles: ListViewItem[] = [];
 
     if (!filesToTransform) {
       return [];
@@ -226,7 +230,7 @@ export const Main = () => {
         depth
       });
 
-      if (filesToTransform[key].files) {
+      if (filesToTransform[key].files && filesToTransform[key].open) {
         transformedFiles.push(
           ...transformFileIndexToArrayLike(
             filesToTransform[key].files,
