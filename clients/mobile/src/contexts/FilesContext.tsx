@@ -159,6 +159,8 @@ export const FilesProvider = (props: Props) => {
         };
         setCurrentWorkingFile(updatedFiles[file.path]);
       }
+      setFiles(updatedFiles);
+      syncFiles(updatedFiles).then(() => console.log("filesync complete new file"));
     } else {
       const updatedFile = {
         ...fileToUpdate,
@@ -167,10 +169,8 @@ export const FilesProvider = (props: Props) => {
 
       const newFiles = updateNestedFile(files, updatedFile);
       setFiles(newFiles);
+      syncFiles(newFiles).then(() => console.log("filesync complete old file"));
     }
-
-    setFiles(updatedFiles);
-    syncFiles(updatedFiles).then(() => console.log("filesync complete"));
   };
 
   const mapStateToNested = (
