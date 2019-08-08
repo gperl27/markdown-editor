@@ -1,6 +1,12 @@
 import React from "react";
 import { createContext, useEffect, useState, ReactNode } from "react";
-import RNFS, { ReadDirItem, StatResult } from "react-native-fs";
+import {
+  useFilesRepository,
+  isDirectory,
+  FileIndex,
+  FileWithContent,
+  Folder
+} from "../repositories/filesRepository";
 
 interface Props {
   children: ReactNode;
@@ -18,21 +24,6 @@ interface State {
   toggleFolderOpen: (folder: Folder) => void;
 }
 
-export interface FileWithContent extends ReadDirItem {
-  parentDir: string;
-  content?: string;
-}
-
-export interface Folder extends ReadDirItem {
-  files: FileIndex;
-  open: boolean;
-  parentDir: string;
-}
-
-export interface FileIndex {
-  [key: string]: FileWithContent | Folder;
-}
-
 const defaultState: State = {
   currentWorkingFile: undefined,
   files: undefined,
@@ -47,97 +38,18 @@ const defaultState: State = {
 
 export const FilesContext = createContext(defaultState);
 
-const getFilesFromDir = (folderPath: string = "") => {
-  return RNFS.readDir(RNFS.DocumentDirectoryPath + `/${folderPath}`);
-};
-
-const getReadableFilesOnly = (files: ReadDirItem[]) => {
-  return files.filter(file => {
-    return (
-      file.name.match(/\.(txt|md)$/i) ||
-      (file.name !== "RCTAsyncLocalStorage_V1" && file.isDirectory())
-    );
-  });
-};
-
-const generateFileIndex = async (
-  filesToIndex: ReadDirItem[],
-  parentDir: string = RNFS.DocumentDirectoryPath
-): Promise<FileIndex> => {
-  let fileIndex: FileIndex = {};
-
-  for (let i = 0; i < filesToIndex.length; i++) {
-    const file = filesToIndex[i];
-
-    if (file.isFile()) {
-      const content = await RNFS.readFile(file.path);
-
-      fileIndex[file.path] = {
-        ...file,
-        content,
-        parentDir
-      };
-    } else if (file.isDirectory()) {
-      fileIndex[file.path] = {
-        ...file,
-        open: true,
-        files: await generateFileIndex(
-          await RNFS.readDir(file.path),
-          file.path
-        ),
-        parentDir
-      };
-    }
-  }
-
-  return fileIndex;
-};
-
-const computedFiles = async (files: ReadDirItem[]) =>
-  await generateFileIndex(getReadableFilesOnly(files));
-
-function isFile(file: any): file is FileWithContent {
-  return file.isFile();
-}
-
-function isDirectory(file: any): file is Folder {
-  return file.isDirectory();
-}
-
 export const FilesProvider = (props: Props) => {
+  const filesRepository = useFilesRepository();
   const [currentWorkingFile, setCurrentWorkingFile] = useState<
     FileWithContent | undefined
   >(undefined);
   const [files, setFiles] = useState<FileIndex | undefined>(undefined);
 
-  const getFiles = async () => {
-    const results = await getFilesFromDir();
-
-    setFiles(await computedFiles(results));
-  };
-
   const deleteFile = async (item: FileWithContent) => {
-    await RNFS.unlink(item.path);
     if (files) {
-      const newFiles = deleteNestedFile(files, item);
+      const newFiles = await filesRepository.deleteFile(files, item);
       setFiles(newFiles);
     }
-  };
-
-  const adaptStatFile = (file: StatResult): ReadDirItem => {
-    return {
-      isDirectory: file.isDirectory,
-      isFile: file.isFile,
-      mtime: (file.ctime as unknown) as Date,
-      name: "",
-      path: file.path,
-      size: file.size,
-      ctime: (file.ctime as unknown) as Date
-    };
-  };
-
-  const normalizeFilename = (contents: string) => {
-    return contents.slice(0, 10).replace(/\s+/, "");
   };
 
   const updateFile = async (
@@ -148,21 +60,20 @@ export const FilesProvider = (props: Props) => {
 
     if (!fileToUpdate) {
       if (contents.length > 0) {
-        const fileName =
-          RNFS.DocumentDirectoryPath + `/${normalizeFilename(contents)}.md`;
-        await RNFS.writeFile(fileName, contents);
-        const file = adaptStatFile(await RNFS.stat(fileName));
+        const fileName = await filesRepository.newFile(contents);
+        const file = await filesRepository.getFileByPath(fileName);
         updatedFiles[file.path] = {
           ...file,
           content: contents,
-          parentDir: RNFS.DocumentDirectoryPath
+          parentDir: filesRepository.defaultHomePath
         };
+
         setCurrentWorkingFile(updatedFiles[file.path]);
+        setFiles(updatedFiles);
+        filesRepository
+          .syncFiles(updatedFiles)
+          .then(() => console.log("filesync complete old file"));
       }
-      setFiles(updatedFiles);
-      syncFiles(updatedFiles).then(() =>
-        console.log("filesync complete new file")
-      );
     } else {
       const updatedFile = {
         ...fileToUpdate,
@@ -170,11 +81,11 @@ export const FilesProvider = (props: Props) => {
       };
 
       if (files) {
-        const newFiles = updateNestedFile(files, updatedFile);
+        const newFiles = filesRepository.updateFile(files, updatedFile);
         setFiles(newFiles);
-        syncFiles(newFiles).then(() =>
-          console.log("filesync complete old file")
-        );
+        filesRepository
+          .syncFiles(newFiles)
+          .then(() => console.log("filesync complete old file"));
       }
     }
   };
@@ -202,112 +113,22 @@ export const FilesProvider = (props: Props) => {
     return updatedFiles;
   };
 
-  const newFolder = async (folderName: string) => {
-    if (!files) {
-      return;
-    }
-
-    const folder = RNFS.DocumentDirectoryPath + `/${folderName}`;
-
-    await RNFS.mkdir(folder);
-
-    const results = await getFilesFromDir();
-    const updatedFiles = await computedFiles(results);
-
-    const updatedFilesWithState = mapStateToNested(files, updatedFiles);
-    setFiles(updatedFilesWithState);
-  };
-
-  const syncFiles = async (filesToSync: FileIndex): Promise<any> => {
-    return Promise.all(
-      Object.keys(filesToSync).map(filepath => {
-        const file = filesToSync[filepath];
-
-        if (isFile(file)) {
-          return RNFS.writeFile(filepath, file.content || "");
-        } else if (isDirectory(file)) {
-          return syncFiles(file.files);
-        }
-      })
-    );
-  };
-
-  const getExistingFilePrefix = (fileToProcess: ReadDirItem) => {
-    return fileToProcess.path
-      .split("/")
-      .slice(0, -1)
-      .join("/");
-  };
-
-  const updateFilename = async (fileName: string) => {
-    if (currentWorkingFile) {
-      if (await RNFS.exists(currentWorkingFile.path)) {
-        const newFileName =
-          getExistingFilePrefix(currentWorkingFile) + `/${fileName}.md`;
-
-        await RNFS.moveFile(currentWorkingFile.path, newFileName);
-      }
-    } else {
-      const newFileName = RNFS.DocumentDirectoryPath + `/${fileName}.md`;
-      await RNFS.writeFile(newFileName, "");
-    }
-
+  const fetchFilesAndMapToState = async () => {
     if (files) {
-      const results = await getFilesFromDir();
-      const updatedFiles = await computedFiles(results);
-
+      const updatedFiles = await filesRepository.getAll();
       const updatedFilesWithState = mapStateToNested(files, updatedFiles);
       setFiles(updatedFilesWithState);
     }
   };
 
-  const updateNestedFile = (
-    parentDirFiles: FileIndex,
-    fileWithChanges: FileWithContent | Folder
-  ) => {
-    const updatedFiles = Object.assign({}, parentDirFiles);
-
-    if (updatedFiles[fileWithChanges.path]) {
-      updatedFiles[fileWithChanges.path] = fileWithChanges;
-
-      return updatedFiles;
-    }
-
-    const parentFolder = updatedFiles[fileWithChanges.parentDir];
-
-    if (parentFolder && isDirectory(parentFolder)) {
-      parentFolder.files = updateNestedFile(
-        parentFolder.files,
-        fileWithChanges
-      );
-
-      return updatedFiles;
-    }
-
-    return updatedFiles;
+  const newFolder = async (folderName: string) => {
+    await filesRepository.newFolder(folderName);
+    await fetchFilesAndMapToState();
   };
 
-  const deleteNestedFile = (
-    parentDirFiles: FileIndex,
-    fileToDelete: FileWithContent | Folder
-  ) => {
-    const updatedFiles = Object.assign({}, parentDirFiles);
-
-    if (updatedFiles[fileToDelete.path]) {
-      delete updatedFiles[fileToDelete.path];
-
-      return updatedFiles;
-    }
-
-    const parentFolder = updatedFiles[fileToDelete.parentDir];
-
-    if (parentFolder && isDirectory(parentFolder)) {
-      parentFolder.files = deleteNestedFile(parentFolder.files, fileToDelete);
-
-      return updatedFiles;
-    }
-
-    return updatedFiles;
+  const updateFilename = async (fileName: string) => {
+    await filesRepository.updateFilename(fileName, currentWorkingFile);
+    await fetchFilesAndMapToState();
   };
 
   const toggleFolderOpen = (folder: Folder) => {
@@ -320,12 +141,15 @@ export const FilesProvider = (props: Props) => {
       open: !folder.open
     };
 
-    const newFiles = updateNestedFile(files, updatedFolder);
+    const newFiles = filesRepository.updateFile(files, updatedFolder);
     setFiles(newFiles);
   };
 
   useEffect(() => {
-    getFiles().catch(e => console.log(e));
+    filesRepository
+      .getAll()
+      .then(results => setFiles(results))
+      .catch(e => console.log(e));
   }, []);
 
   return (

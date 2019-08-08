@@ -31,10 +31,7 @@ import { useAsyncStorage } from "@react-native-community/async-storage";
 import { Cache, CacheKeys } from "../domain/cache";
 import { useEditor } from "../hooks/useEditor";
 import {
-  FileIndex,
   FilesContext,
-  FileWithContent,
-  Folder
 } from "../contexts/FilesContext";
 import { AppToHtml } from "../domain/editorIpc";
 import { useLocalServer } from "../hooks/useStaticServer";
@@ -47,12 +44,18 @@ import {
   Button
 } from "react-native-elements";
 import * as Animatable from "react-native-animatable";
+import {
+  FileFromDir,
+  FileIndex,
+  FileWithContent,
+  isDirectory
+} from "../repositories/filesRepository";
 
-type ListViewItem = (FileWithContent | Folder) & {
+type ListViewItem = FileFromDir & {
   depth: number;
 };
 
-type ListViewData = ListViewItem[];
+const AnimatedScrollView = Animatable.createAnimatableComponent(ScrollView);
 
 export const Main = () => {
   const {
@@ -118,6 +121,10 @@ export const Main = () => {
   };
 
   const onAppLoad = async () => {
+    // TODO: FIXME
+    await removeItem();
+    return;
+
     const cachedEditorState = await getEditorCache();
 
     if (!cachedEditorState) {
@@ -148,7 +155,7 @@ export const Main = () => {
       }
     };
 
-    if (item.isDirectory()) {
+    if (isDirectory(item)) {
       fileOrFolderProps.chevron = true;
       fileOrFolderProps.leftIcon = <Icon name="folder" />;
       fileOrFolderProps.onPress = () => toggleFolderOpen(item);
@@ -263,7 +270,7 @@ export const Main = () => {
     loadStateFromCache().catch(e =>
       console.log(e, "could not load editor state from cache")
     );
-  }, [getEditorCache]);
+  }, []);
 
   if (!uri) {
     return (
@@ -372,15 +379,22 @@ export const Main = () => {
             />
           </View>
           <Animatable.View
+            direction={state.showMarkdownPreview ? "normal" : "reverse"}
             transition="flex"
             style={
               state.showMarkdownPreview ? styles.markdownContainer : { flex: 0 }
             }
           >
-            <ScrollView
-              style={!state.showMarkdownPreview && { display: "none" }}
-            >
-              <Markdown style={markdownStyles}>{value}</Markdown>
+            <ScrollView>
+              <Markdown
+                style={
+                  state.showMarkdownPreview
+                    ? markdownStyles
+                    : { padding: 0 }
+                }
+              >
+                {value}
+              </Markdown>
             </ScrollView>
           </Animatable.View>
         </View>
