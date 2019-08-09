@@ -48,6 +48,7 @@ import {
   FileWithContent,
   isDirectory
 } from "../repositories/filesRepository";
+import { useOnMount } from "../hooks/useOnMount";
 
 type ListViewItem = FileFromDir & {
   depth: number;
@@ -247,7 +248,7 @@ export const Main = () => {
   const isBoth = state.showMarkdownPreview && state.showEditor;
   const isEditorOnly = state.showEditor && !state.showMarkdownPreview;
 
-  useEffect(() => {
+  useOnMount(() => {
     const loadStateFromCache = async () => {
       const cachedEditorState = await getEditorCache();
 
@@ -263,8 +264,7 @@ export const Main = () => {
     loadStateFromCache().catch(e =>
       console.log(e, "could not load editor state from cache")
     );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  });
 
   if (!uri) {
     return (

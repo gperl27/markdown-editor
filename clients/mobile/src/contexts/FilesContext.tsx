@@ -1,5 +1,5 @@
 import React from "react";
-import { createContext, useEffect, useState, ReactNode } from "react";
+import { createContext, useState, ReactNode } from "react";
 import {
   useFilesRepository,
   isDirectory,
@@ -7,6 +7,7 @@ import {
   FileWithContent,
   Folder
 } from "../repositories/filesRepository";
+import { useOnMount } from "../hooks/useOnMount";
 
 interface Props {
   children: ReactNode;
@@ -155,13 +156,12 @@ export const FilesProvider = (props: Props) => {
     });
   };
 
-  useEffect(() => {
+  useOnMount(() => {
     filesRepository
       .getAll()
       .then(results => setFiles(results))
       .catch(e => console.log(e));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  });
 
   return (
     <FilesContext.Provider
