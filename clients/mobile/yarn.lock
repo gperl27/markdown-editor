@@ -5204,7 +5204,7 @@ prompts@^2.0.1:
     kleur "^3.0.2"
     sisteransi "^1.0.0"
 
-prop-types@^15.5.10, prop-types@^15.5.8, prop-types@^15.6.2, prop-types@^15.7.2:
+prop-types@^15.5.10, prop-types@^15.5.8, prop-types@^15.6.1, prop-types@^15.6.2, prop-types@^15.7.2:
   version "15.7.2"
   resolved "https://registry.yarnpkg.com/prop-types/-/prop-types-15.7.2.tgz#52c41e75b8c87e72b9d9360e0206b99dcbffa6c5"
   integrity sha512-8QQikdH7//R2vurIJSutZ1smHYTcLpRWEOlHnzcWHmBYrOGUysKwSsrC89BCiFj3CbrfJ/nXFdJepOVrY1GCHQ==
@@ -5369,6 +5369,13 @@ react-native-vector-icons@^6.6.0:
     lodash "^4.0.0"
     prop-types "^15.6.2"
     yargs "^13.2.2"
+
+react-native-walkthrough-tooltip@^0.6.1:
+  version "0.6.1"
+  resolved "https://registry.yarnpkg.com/react-native-walkthrough-tooltip/-/react-native-walkthrough-tooltip-0.6.1.tgz#40979d2e0f0d844b321e952ec8cbe3c626ae63de"
+  integrity sha512-vJ5kS7/5jXxveoJK0Wm9yL+1QE4KWpOWysL37TTl+L4Crn8FActltJioBT+/MUO5OrjStuirRbcf5Mp1jezcZw==
+  dependencies:
+    prop-types "^15.6.1"
 
 react-native-webview@^5.12.1:
   version "5.12.1"

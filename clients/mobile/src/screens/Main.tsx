@@ -39,7 +39,8 @@ import {
   ListItem,
   Text,
   Input,
-  Button
+  Button,
+  Tooltip
 } from "react-native-elements";
 import * as Animatable from "react-native-animatable";
 import {
@@ -52,6 +53,67 @@ import { useOnMount } from "../hooks/useOnMount";
 
 type ListViewItem = FileFromDir & {
   depth: number;
+  hiddenItemProps?: HiddenItemProps;
+};
+
+interface HiddenItemProps {
+  onDeleteItem(item: FileWithContent): void;
+  onRenameItem?(item: FileWithContent): void;
+}
+
+interface HiddenItem {
+  item: FileWithContent;
+  hiddenItemProps: HiddenItemProps;
+}
+
+const HiddenItem = (props: HiddenItem) => {
+  const { item, hiddenItemProps } = props;
+  const [showTooltip, setShowTooltip] = useState(false);
+
+  const ref = useRef<Tooltip>();
+
+  const showTooltip = () => {
+    if (ref.current) {
+      const state = ref.current.state;
+      ref.current.setState({
+        ...state,
+        isVisible: true
+      });
+    }
+  };
+
+  const onDeleteItem = () => {
+    hiddenItemProps.onDeleteItem(item);
+
+    if (ref.current) {
+      const state = ref.current.state;
+      ref.current.setState({
+        ...state,
+        isVisible: false
+      });
+    }
+  };
+
+  return (
+    <View style={styles.rowBack}>
+      <Tooltip
+        ref={ref}
+        withOverlay={false}
+        popover={<Text onPress={onDeleteItem}>Delete</Text>}
+      >
+        <TouchableHighlight onPress={showTooltip}>
+          <Text>Delete</Text>
+        </TouchableHighlight>
+      </Tooltip>
+      <TouchableHighlight
+        onPress={() =>
+          hiddenItemProps.onRenameItem && hiddenItemProps.onRenameItem(item)
+        }
+      >
+        <Text>Rename</Text>
+      </TouchableHighlight>
+    </View>
+  );
 };
 
 export const Main = () => {
@@ -185,15 +247,13 @@ export const Main = () => {
     );
   };
 
-  const hiddenItem = ({ item }: { item: FileWithContent }) => {
-    return (
-      <TouchableHighlight
-        style={styles.rowBack}
-        onPress={() => onDeleteItem(item)}
-      >
-        <Text>Delete</Text>
-      </TouchableHighlight>
-    );
+  const renderHiddenItem = ({ item }: { item: FileWithContent }) => {
+    const hiddenItemProps = {
+      onDeleteItem,
+      onRenameItem: () => console.log("rename me")
+    };
+
+    return <HiddenItem item={item} hiddenItemProps={hiddenItemProps} />;
   };
 
   useEffect(() => {
@@ -291,10 +351,10 @@ export const Main = () => {
             keyExtractor={(item, index) => index.toString()}
             data={transformFileIndexToArrayLike(files)}
             renderItem={renderFile}
-            renderHiddenItem={hiddenItem}
-            rightOpenValue={-75}
+            renderHiddenItem={renderHiddenItem}
+            rightOpenValue={-150}
             leftOpenValue={75}
-            stopRightSwipe={-150}
+            stopRightSwipe={-225}
             stopLeftSwipe={1}
             closeOnScroll={true}
             closeOnRowPress={true}
