@@ -30,9 +30,7 @@ import { iOSMarkdownStyleFactory } from "../lib/theme";
 import { useAsyncStorage } from "@react-native-community/async-storage";
 import { Cache, CacheKeys } from "../domain/cache";
 import { useEditor } from "../hooks/useEditor";
-import {
-  FilesContext,
-} from "../contexts/FilesContext";
+import { FilesContext } from "../contexts/FilesContext";
 import { AppToHtml } from "../domain/editorIpc";
 import { useLocalServer } from "../hooks/useStaticServer";
 import {
@@ -55,8 +53,6 @@ type ListViewItem = FileFromDir & {
   depth: number;
 };
 
-const AnimatedScrollView = Animatable.createAnimatableComponent(ScrollView);
-
 export const Main = () => {
   const {
     setCurrentWorkingFile,
@@ -65,7 +61,8 @@ export const Main = () => {
     deleteFile,
     updateFilename,
     newFolder,
-    toggleFolderOpen
+    toggleFolderOpen,
+    loadFileFromCache
   } = useContext(FilesContext);
   const [state, dispatch] = useReducer(editorUiReducer, editorUiInitialState);
   const { uri } = useLocalServer();
@@ -108,7 +105,7 @@ export const Main = () => {
   };
 
   const onGetFileContents = async (file: FileWithContent) => {
-    setCurrentWorkingFile(file);
+    await loadFileFromCache(file);
     sendToEditor(AppToHtml.UPDATE_EDITOR_VALUE, file.content);
   };
 
@@ -121,10 +118,6 @@ export const Main = () => {
   };
 
   const onAppLoad = async () => {
-    // TODO: FIXME
-    await removeItem();
-    return;
-
     const cachedEditorState = await getEditorCache();
 
     if (!cachedEditorState) {
@@ -270,6 +263,7 @@ export const Main = () => {
     loadStateFromCache().catch(e =>
       console.log(e, "could not load editor state from cache")
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   if (!uri) {
@@ -388,9 +382,7 @@ export const Main = () => {
             <ScrollView>
               <Markdown
                 style={
-                  state.showMarkdownPreview
-                    ? markdownStyles
-                    : { padding: 0 }
+                  state.showMarkdownPreview ? markdownStyles : { padding: 0 }
                 }
               >
                 {value}

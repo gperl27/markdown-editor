@@ -22,6 +22,7 @@ interface State {
   updateFilename: (name: string) => void;
   newFolder: (folderName: string) => void;
   toggleFolderOpen: (folder: Folder) => void;
+  loadFileFromCache: (path: FileWithContent) => void;
 }
 
 const defaultState: State = {
@@ -33,7 +34,8 @@ const defaultState: State = {
   deleteFile: () => undefined,
   updateFilename: () => undefined,
   newFolder: () => undefined,
-  toggleFolderOpen: () => undefined
+  toggleFolderOpen: () => undefined,
+  loadFileFromCache: () => undefined
 };
 
 export const FilesContext = createContext(defaultState);
@@ -145,11 +147,20 @@ export const FilesProvider = (props: Props) => {
     setFiles(newFiles);
   };
 
+  const loadFileFromCache = async (serializedFile: FileWithContent) => {
+    const file = await filesRepository.getFileByPath(serializedFile.path);
+    setCurrentWorkingFile({
+      ...serializedFile,
+      ...file
+    });
+  };
+
   useEffect(() => {
     filesRepository
       .getAll()
       .then(results => setFiles(results))
       .catch(e => console.log(e));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
@@ -163,7 +174,8 @@ export const FilesProvider = (props: Props) => {
         updateFile,
         updateFilename,
         newFolder,
-        toggleFolderOpen
+        toggleFolderOpen,
+        loadFileFromCache
       }}
     >
       {props.children}
