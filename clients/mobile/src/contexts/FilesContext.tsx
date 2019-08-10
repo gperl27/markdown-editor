@@ -9,6 +9,9 @@ import {
 } from "../repositories/filesRepository";
 import { useOnMount } from "../hooks/useOnMount";
 import { useDebouncedCallback } from "use-debounce";
+import { Modal } from "react-native";
+import { ChangeFilename } from "../components/ChangeFilename";
+import { Icon, Overlay } from 'react-native-elements';
 
 interface Props {
   children: ReactNode;
@@ -17,6 +20,7 @@ interface Props {
 interface State {
   files?: FileIndex;
   setFiles: (files: FileIndex) => void;
+  isEditingFilename: boolean;
   currentWorkingFile?: FileWithContent;
   setCurrentWorkingFile: (file?: FileWithContent) => void;
   updateFile: (contents: string, file?: FileWithContent) => void;
@@ -25,9 +29,11 @@ interface State {
   newFolder: (folderName: string) => void;
   toggleFolderOpen: (folder: Folder) => void;
   loadFile: (path: FileWithContent) => void;
+  setIsEditingFilename: (toggle: boolean) => void;
 }
 
 const defaultState: State = {
+  isEditingFilename: false,
   currentWorkingFile: undefined,
   files: undefined,
   setCurrentWorkingFile: () => undefined,
@@ -37,7 +43,8 @@ const defaultState: State = {
   updateFilename: () => undefined,
   newFolder: () => undefined,
   toggleFolderOpen: () => undefined,
-  loadFile: () => undefined
+  loadFile: () => undefined,
+  setIsEditingFilename: () => undefined
 };
 
 const DEBOUNCE = 1000;
@@ -50,6 +57,7 @@ export const FilesProvider = (props: Props) => {
     FileWithContent | undefined
   >(undefined);
   const [files, setFiles] = useState<FileIndex | undefined>(undefined);
+  const [isEditingFilename, setIsEditingFilename] = useState(false);
   const [autoSaveOnChange] = useDebouncedCallback(newFiles => {
     filesRepository
       .syncFiles(newFiles)
@@ -195,10 +203,25 @@ export const FilesProvider = (props: Props) => {
         updateFilename,
         newFolder,
         toggleFolderOpen,
-        loadFile
+        loadFile,
+        isEditingFilename,
+        setIsEditingFilename
       }}
     >
       {props.children}
+      <Overlay
+        animationType="fade"
+        height={"25%"}
+        width={"30%"}
+        borderRadius={25}
+        overlayStyle={{ padding: 0, margin: 0 }}
+        isVisible={isEditingFilename}
+      >
+        <ChangeFilename
+          onCancel={() => setIsEditingFilename(false)}
+          onSubmit={(...args) => console.log(args, "submit me")}
+        />
+      </Overlay>
     </FilesContext.Provider>
   );
 };
