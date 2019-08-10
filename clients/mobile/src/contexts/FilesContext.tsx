@@ -8,6 +8,7 @@ import {
   Folder
 } from "../repositories/filesRepository";
 import { useOnMount } from "../hooks/useOnMount";
+import { useDebouncedCallback } from "use-debounce";
 
 interface Props {
   children: ReactNode;
@@ -39,6 +40,8 @@ const defaultState: State = {
   loadFile: () => undefined
 };
 
+const DEBOUNCE = 1000;
+
 export const FilesContext = createContext(defaultState);
 
 export const FilesProvider = (props: Props) => {
@@ -47,6 +50,12 @@ export const FilesProvider = (props: Props) => {
     FileWithContent | undefined
   >(undefined);
   const [files, setFiles] = useState<FileIndex | undefined>(undefined);
+  const [autoSaveOnChange] = useDebouncedCallback(newFiles => {
+    filesRepository
+        .syncFiles(newFiles)
+        .then(() => console.log("filesync complete old file"));
+  }, DEBOUNCE);
+
 
   const deleteFile = async (item: FileWithContent) => {
     if (files) {
@@ -72,9 +81,7 @@ export const FilesProvider = (props: Props) => {
         };
 
         setCurrentWorkingFile(updatedFiles[file.path]);
-        filesRepository
-          .syncFiles(updatedFiles)
-          .then(() => console.log("filesync complete new file"));
+        autoSaveOnChange(updatedFiles);
       }
 
       setFiles(updatedFiles);
@@ -87,9 +94,7 @@ export const FilesProvider = (props: Props) => {
       if (files) {
         const newFiles = filesRepository.updateFile(files, updatedFile);
         setFiles(newFiles);
-        filesRepository
-          .syncFiles(newFiles)
-          .then(() => console.log("filesync complete old file"));
+        autoSaveOnChange(newFiles);
       }
     }
   };

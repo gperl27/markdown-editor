@@ -102,7 +102,7 @@ export const Directory = (props: Props) => {
             fileOrFolderProps.onLongPress = () => console.log('long press mate')
         } else if (item.isFile()) {
             fileOrFolderProps.leftIcon = <Icon type="font-awesome" name="file" />;
-            fileOrFolderProps.onPress = () => props.onClickFile && props.onClickFile(item);
+            fileOrFolderProps.onPress = async () => props.onClickFile && await props.onClickFile(item);
             fileOrFolderProps.onLongPress = () => console.log('long press mate')
         }
 

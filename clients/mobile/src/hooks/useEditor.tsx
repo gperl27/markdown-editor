@@ -2,13 +2,10 @@ import { NativeSyntheticEvent } from "react-native";
 import { WebViewMessage } from "react-native-webview/lib/WebViewTypes";
 import { HtmlToApp } from "../domain/editorIpc";
 import { Dispatch, useContext, useState } from "react";
-import { useDebouncedCallback } from "use-debounce";
 import { Action } from "../reducers";
 import { EditorUiTypes } from "../reducers/editorUi";
 import { IPosition } from "monaco-editor";
 import { FilesContext } from "../contexts/FilesContext";
-
-const DEBOUNCE = 1000;
 
 interface Props {
   dispatch: Dispatch<Action<EditorUiTypes>>;
@@ -19,10 +16,6 @@ export const useEditor = (props: Props) => {
   const { currentWorkingFile, updateFile } = useContext(FilesContext);
   const [value, setValue] = useState("");
   const [position, setPosition] = useState<IPosition | undefined>(undefined);
-
-  const [autoSaveOnChange] = useDebouncedCallback(async contents => {
-    updateFile(contents, currentWorkingFile);
-  }, DEBOUNCE);
 
   const isEditorDefaultPosition = (incomingValue: any) =>
     incomingValue === { lineNumber: 1, column: 1 };
@@ -37,7 +30,7 @@ export const useEditor = (props: Props) => {
     switch (decodedMessage.event) {
       case HtmlToApp.CHANGE_VALUE:
         setValue(decodedMessage.value);
-        await autoSaveOnChange(decodedMessage.value);
+        updateFile(decodedMessage.value, currentWorkingFile);
         break;
       case HtmlToApp.CHANGE_POSITION:
         if (isEditorDefaultPosition(decodedMessage.value)) {
