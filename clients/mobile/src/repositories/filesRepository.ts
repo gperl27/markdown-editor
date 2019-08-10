@@ -155,7 +155,7 @@ export class FilesRepository implements FilesInterface {
   };
 
   async updateFilename(fileName: string, file?: FileFromDir) {
-    if (fileName.match(/\/\w+/g)) {
+    if (fileName.match(/\/|\.\w+/g)) {
       throw new Error("Invalid filename");
     }
 
