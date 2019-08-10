@@ -9,13 +9,14 @@ import {
 } from "../repositories/filesRepository";
 import { useOnMount } from "../hooks/useOnMount";
 import { useDebouncedCallback } from "use-debounce";
-import { Modal } from "react-native";
 import { ChangeFilename } from "../components/ChangeFilename";
-import { Icon, Overlay } from 'react-native-elements';
+import { Overlay } from "react-native-elements";
 
 interface Props {
   children: ReactNode;
 }
+
+const MODAL_RADIUS = 25;
 
 interface State {
   files?: FileIndex;
@@ -213,11 +214,12 @@ export const FilesProvider = (props: Props) => {
         animationType="fade"
         height={"25%"}
         width={"30%"}
-        borderRadius={25}
+        borderRadius={MODAL_RADIUS}
         overlayStyle={{ padding: 0, margin: 0 }}
         isVisible={isEditingFilename}
       >
         <ChangeFilename
+          headerTopRadius={MODAL_RADIUS}
           onCancel={() => setIsEditingFilename(false)}
           onSubmit={(...args) => console.log(args, "submit me")}
         />

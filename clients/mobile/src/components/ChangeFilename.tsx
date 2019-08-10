@@ -18,6 +18,7 @@ interface Props {
   type?: FileType;
   onSubmit: (filename: string, type: FileType) => void;
   onCancel: () => void;
+  headerTopRadius?: number;
 }
 
 const getTypeIndexFromFileOptions = (type?: FileType) => {
@@ -55,13 +56,12 @@ export const ChangeFilename = (props: Props) => {
       style={{
         flex: 1,
         justifyContent: "space-between"
-        // alignItems: "center"
       }}
     >
       <Header
         containerStyle={{
-          borderTopLeftRadius: 25,
-          borderTopRightRadius: 25,
+          borderTopLeftRadius: props.headerTopRadius || 25,
+          borderTopRightRadius: props.headerTopRadius || 25,
           alignSelf: "flex-start"
         }}
         backgroundColor={"white"}
