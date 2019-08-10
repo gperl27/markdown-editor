@@ -30,19 +30,11 @@ import { useEditor } from "../hooks/useEditor";
 import { FilesContext } from "../contexts/FilesContext";
 import { AppToHtml } from "../domain/editorIpc";
 import { useLocalServer } from "../hooks/useStaticServer";
-import {
-  Header,
-  Icon,
-  Text,
-  Input,
-  Button,
-} from "react-native-elements";
+import { Header, Icon, Text, Input, Button } from "react-native-elements";
 import * as Animatable from "react-native-animatable";
-import {
-  FileWithContent,
-} from "../repositories/filesRepository";
+import { FileWithContent } from "../repositories/filesRepository";
 import { useOnMount } from "../hooks/useOnMount";
-import {Directory} from "./Directory";
+import { Directory } from "./Directory";
 
 export const Main = () => {
   const {
@@ -101,11 +93,11 @@ export const Main = () => {
 
   const onGetFileContents = async (file: FileWithContent) => {
     await loadFile(file);
-    const content = file.content && file.content.length > 0 ? file.content : " ";
+    const content =
+      file.content && file.content.length > 0 ? file.content : " ";
 
     sendToEditor(AppToHtml.UPDATE_EDITOR_VALUE, content);
   };
-
 
   const onAppLoad = async () => {
     const cachedEditorState = await getEditorCache();
@@ -148,8 +140,6 @@ export const Main = () => {
     return () => AppState.removeEventListener("change", handleAppStateChange);
   });
 
-
-
   const isPreviewOnly = state.showMarkdownPreview && !state.showEditor;
   const isBoth = state.showMarkdownPreview && state.showEditor;
   const isEditorOnly = state.showEditor && !state.showMarkdownPreview;
@@ -184,10 +174,10 @@ export const Main = () => {
     <View style={styles.container}>
       {state.showDirectory && (
         <Directory
-            viewProps={{ style: styles.directoryList }}
-            onDeleteFile={onDeleteItem}
-            onRenameItem={() => console.log('hey')}
-            onClickFile={onGetFileContents}
+          viewProps={{ style: styles.directoryList }}
+          onDeleteFile={onDeleteItem}
+          onRenameItem={() => console.log("hey")}
+          onClickFile={onGetFileContents}
         />
       )}
       <View style={styles.editorContainer}>
@@ -269,15 +259,11 @@ export const Main = () => {
             }
           >
             <ScrollView>
-              {state.showMarkdownPreview ?
-                  <Markdown
-                      style={markdownStyles}
-                  >
-                    {value}
-                  </Markdown>
-                  :
-                  <View/>
-              }
+              {state.showMarkdownPreview ? (
+                <Markdown style={markdownStyles}>{value}</Markdown>
+              ) : (
+                <View />
+              )}
             </ScrollView>
           </Animatable.View>
         </View>

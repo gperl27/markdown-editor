@@ -53,13 +53,11 @@ export class FilesRepository implements FilesInterface {
   private getParentDirs(file: FileFromDir) {
     const paths = file.parentDir.split("Documents/");
     let pathBuilder = "";
-    return paths[1]
-        .split("/")
-        .map(dir => {
+    return paths[1].split("/").map(dir => {
       pathBuilder += `/${dir}`;
 
       return RNFS.DocumentDirectoryPath + pathBuilder;
-    })
+    });
   }
 
   updateFile(files: FileIndex, file: FileFromDir, depth = 0) {
@@ -72,7 +70,9 @@ export class FilesRepository implements FilesInterface {
     }
 
     const walkPathKeys = this.getParentDirs(file);
-    const parentFolder = updatedFiles[walkPathKeys[depth]] ? Object.assign({}, updatedFiles[walkPathKeys[depth]]) : undefined;
+    const parentFolder = updatedFiles[walkPathKeys[depth]]
+      ? Object.assign({}, updatedFiles[walkPathKeys[depth]])
+      : undefined;
 
     if (parentFolder && isDirectory(parentFolder)) {
       parentFolder.files = this.updateFile(parentFolder.files, file, depth + 1);
@@ -80,7 +80,7 @@ export class FilesRepository implements FilesInterface {
       return {
         ...updatedFiles,
         [parentFolder.path]: parentFolder
-      }
+      };
     }
 
     return updatedFiles;
@@ -167,9 +167,9 @@ export class FilesRepository implements FilesInterface {
         await RNFS.moveFile(file.path, newFileName);
 
         return {
-          ...await this.getFileByPath(newFileName),
-          parentDir: root,
-        }
+          ...(await this.getFileByPath(newFileName)),
+          parentDir: root
+        };
       }
     }
 
@@ -177,9 +177,9 @@ export class FilesRepository implements FilesInterface {
     await RNFS.writeFile(newFileName, "");
 
     return {
-     ...await this.getFileByPath(newFileName),
-     parentDir: this.defaultHomePath,
-    }
+      ...(await this.getFileByPath(newFileName)),
+      parentDir: this.defaultHomePath
+    };
   }
 
   syncFiles(files: FileIndex): Promise<any> {

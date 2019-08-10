@@ -52,10 +52,9 @@ export const FilesProvider = (props: Props) => {
   const [files, setFiles] = useState<FileIndex | undefined>(undefined);
   const [autoSaveOnChange] = useDebouncedCallback(newFiles => {
     filesRepository
-        .syncFiles(newFiles)
-        .then(() => console.log("filesync complete old file"));
+      .syncFiles(newFiles)
+      .then(() => console.log("filesync complete old file"));
   }, DEBOUNCE);
-
 
   const deleteFile = async (item: FileWithContent) => {
     if (files) {
@@ -136,11 +135,14 @@ export const FilesProvider = (props: Props) => {
   };
 
   const updateFilename = async (fileName: string) => {
-    const newFile = await filesRepository.updateFilename(fileName, currentWorkingFile);
+    const newFile = await filesRepository.updateFilename(
+      fileName,
+      currentWorkingFile
+    );
 
     if (newFile) {
       setCurrentWorkingFile({
-        ...currentWorkingFile || {} as FileWithContent,
+        ...(currentWorkingFile || ({} as FileWithContent)),
         ...newFile
       });
     }
