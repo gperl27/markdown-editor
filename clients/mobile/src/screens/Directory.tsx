@@ -138,15 +138,18 @@ export const Directory = (props: Props) => {
         }
 
         Object.keys(filesToTransform).forEach(key => {
+            const currentFile = filesToTransform[key];
+
             transformedFiles.push({
-                ...filesToTransform[key],
+                ...currentFile,
                 depth
             });
 
-            if (filesToTransform[key].files && filesToTransform[key].open) {
+            // only show subtree if directory is "open"
+            if (isDirectory(currentFile) && currentFile.files && currentFile.open) {
                 transformedFiles.push(
                     ...transformFileIndexToArrayLike(
-                        filesToTransform[key].files,
+                        currentFile.files,
                         depth + 1
                     )
                 );

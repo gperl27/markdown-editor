@@ -49,7 +49,7 @@ export const Main = () => {
     setCurrentWorkingFile,
     currentWorkingFile,
     updateFilename,
-    loadFileFromCache,
+    loadFile,
     deleteFile
   } = useContext(FilesContext);
   const [state, dispatch] = useReducer(editorUiReducer, editorUiInitialState);
@@ -100,8 +100,10 @@ export const Main = () => {
   };
 
   const onGetFileContents = async (file: FileWithContent) => {
-    await loadFileFromCache(file);
-    sendToEditor(AppToHtml.UPDATE_EDITOR_VALUE, file.content);
+    await loadFile(file);
+    const content = file.content && file.content.length > 0 ? file.content : " ";
+
+    sendToEditor(AppToHtml.UPDATE_EDITOR_VALUE, content);
   };
 
 

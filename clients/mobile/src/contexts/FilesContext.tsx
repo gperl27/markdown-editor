@@ -23,7 +23,7 @@ interface State {
   updateFilename: (name: string) => void;
   newFolder: (folderName: string) => void;
   toggleFolderOpen: (folder: Folder) => void;
-  loadFileFromCache: (path: FileWithContent) => void;
+  loadFile: (path: FileWithContent) => void;
 }
 
 const defaultState: State = {
@@ -36,7 +36,7 @@ const defaultState: State = {
   updateFilename: () => undefined,
   newFolder: () => undefined,
   toggleFolderOpen: () => undefined,
-  loadFileFromCache: () => undefined
+  loadFile: () => undefined
 };
 
 export const FilesContext = createContext(defaultState);
@@ -50,8 +50,8 @@ export const FilesProvider = (props: Props) => {
 
   const deleteFile = async (item: FileWithContent) => {
     if (files) {
-      const newFiles = await filesRepository.deleteFile(files, item);
-      setFiles(newFiles);
+      await filesRepository.deleteFile(files, item);
+      await fetchFilesAndMapToState();
     }
   };
 
@@ -72,11 +72,12 @@ export const FilesProvider = (props: Props) => {
         };
 
         setCurrentWorkingFile(updatedFiles[file.path]);
-        setFiles(updatedFiles);
         filesRepository
           .syncFiles(updatedFiles)
-          .then(() => console.log("filesync complete old file"));
+          .then(() => console.log("filesync complete new file"));
       }
+
+      setFiles(updatedFiles);
     } else {
       const updatedFile = {
         ...fileToUpdate,
@@ -130,7 +131,15 @@ export const FilesProvider = (props: Props) => {
   };
 
   const updateFilename = async (fileName: string) => {
-    await filesRepository.updateFilename(fileName, currentWorkingFile);
+    const newFile = await filesRepository.updateFilename(fileName, currentWorkingFile);
+
+    if (newFile) {
+      setCurrentWorkingFile({
+        ...currentWorkingFile || {} as FileWithContent,
+        ...newFile
+      });
+    }
+
     await fetchFilesAndMapToState();
   };
 
@@ -148,8 +157,12 @@ export const FilesProvider = (props: Props) => {
     setFiles(newFiles);
   };
 
-  const loadFileFromCache = async (serializedFile: FileWithContent) => {
-    const file = await filesRepository.getFileByPath(serializedFile.path);
+  const loadFile = async (file: FileWithContent) => {
+    if (file.isDirectory && file.isFile) {
+      return setCurrentWorkingFile(file);
+    }
+
+    const serializedFile = await filesRepository.getFileByPath(file.path);
     setCurrentWorkingFile({
       ...serializedFile,
       ...file
@@ -175,7 +188,7 @@ export const FilesProvider = (props: Props) => {
         updateFilename,
         newFolder,
         toggleFolderOpen,
-        loadFileFromCache
+        loadFile
       }}
     >
       {props.children}

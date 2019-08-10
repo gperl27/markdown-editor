@@ -5,7 +5,7 @@ export function isFile(file: any): file is FileWithContent {
 }
 
 export function isDirectory(file: any): file is Folder {
-  return file.isDirectory();
+  return Object.keys(file).length > 0 && file.isDirectory();
 }
 
 interface FilesInterface<
@@ -15,9 +15,9 @@ interface FilesInterface<
   FileDataStructure = T | T[]
 > {
   getAll(): Promise<FileDataStructure>;
-  deleteFile(files: T, file: P): FileDataStructure | Promise<FileDataStructure>;
+  deleteFile(files: T, file: P): Promise<void>;
   updateFile(files: T, file: P): FileDataStructure | Promise<FileDataStructure>;
-  updateFilename(fileName: string, file: P): Promise<void>;
+  updateFilename(fileName: string, file: P): Promise<P>;
   syncFiles(files: T): Promise<void>;
   newFolder(folderName: string): Promise<void>;
   newFile(contents: string): Promise<string>;
@@ -50,7 +50,19 @@ export class FilesRepository implements FilesInterface {
     return RNFS.mkdir(folder);
   }
 
-  updateFile(files: FileIndex, file: FileFromDir) {
+  private getParentDirs(file: FileFromDir) {
+    const paths = file.parentDir.split("Documents/");
+    let pathBuilder = "";
+    return paths[1]
+        .split("/")
+        .map(dir => {
+      pathBuilder += `/${dir}`;
+
+      return RNFS.DocumentDirectoryPath + pathBuilder;
+    })
+  }
+
+  updateFile(files: FileIndex, file: FileFromDir, depth = 0) {
     const updatedFiles = Object.assign({}, files);
 
     if (updatedFiles[file.path]) {
@@ -59,36 +71,27 @@ export class FilesRepository implements FilesInterface {
       return updatedFiles;
     }
 
-    const parentFolder = updatedFiles[file.parentDir];
+    const walkPathKeys = this.getParentDirs(file);
+    const parentFolder = updatedFiles[walkPathKeys[depth]] ? Object.assign({}, updatedFiles[walkPathKeys[depth]]) : undefined;
 
     if (parentFolder && isDirectory(parentFolder)) {
-      parentFolder.files = this.updateFile(parentFolder.files, file);
+      parentFolder.files = this.updateFile(parentFolder.files, file, depth + 1);
 
-      return updatedFiles;
+      return {
+        ...updatedFiles,
+        [parentFolder.path]: parentFolder
+      }
     }
 
     return updatedFiles;
   }
 
-  async deleteFile(files: FileIndex, file: FileFromDir) {
-    await RNFS.unlink(file.path);
-    const updatedFiles = Object.assign({}, files);
-
-    if (updatedFiles[file.path]) {
-      delete updatedFiles[file.path];
-
-      return updatedFiles;
+  deleteFile(files: FileIndex, file: FileFromDir) {
+    try {
+      return RNFS.unlink(file.path);
+    } catch (e) {
+      throw e;
     }
-
-    const parentFolder = updatedFiles[file.parentDir];
-
-    if (parentFolder && isDirectory(parentFolder)) {
-      parentFolder.files = await this.deleteFile(parentFolder.files, file);
-
-      return updatedFiles;
-    }
-
-    return updatedFiles;
   }
 
   private async generateIndex(
@@ -151,17 +154,31 @@ export class FilesRepository implements FilesInterface {
     });
   };
 
-  async updateFilename(fileName: string, file?: FileFromDir): Promise<void> {
+  async updateFilename(fileName: string, file?: FileFromDir) {
+    if (fileName.match(/\/\w+/g)) {
+      throw new Error("Invalid filename");
+    }
+
     if (file) {
       if (await RNFS.exists(file.path)) {
-        const newFileName =
-          this.getExistingFilePrefix(file) + `/${fileName}.md`;
+        const root = this.getExistingFilePrefix(file);
+        const newFileName = root + `/${fileName}.md`;
 
-        return await RNFS.moveFile(file.path, newFileName);
+        await RNFS.moveFile(file.path, newFileName);
+
+        return {
+          ...await this.getFileByPath(newFileName),
+          parentDir: root,
+        }
       }
-    } else {
-      const newFileName = RNFS.DocumentDirectoryPath + `/${fileName}.md`;
-      return await RNFS.writeFile(newFileName, "");
+    }
+
+    const newFileName = this.defaultHomePath + `/${fileName}.md`;
+    await RNFS.writeFile(newFileName, "");
+
+    return {
+     ...await this.getFileByPath(newFileName),
+     parentDir: this.defaultHomePath,
     }
   }
 
