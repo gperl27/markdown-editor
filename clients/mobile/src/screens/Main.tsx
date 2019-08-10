@@ -5,11 +5,9 @@ import {
   SafeAreaView,
   ScrollView,
   StyleSheet,
-  TouchableHighlight,
   TouchableOpacity,
   View
 } from "react-native";
-import { SwipeListView } from "react-native-swipe-list-view";
 import {
   editorUiInitialState,
   editorUiReducer,
@@ -17,7 +15,6 @@ import {
 } from "../reducers/editorUi";
 import { WebView } from "react-native-webview";
 import React, {
-  ComponentProps,
   MutableRefObject,
   useContext,
   useEffect,
@@ -36,96 +33,24 @@ import { useLocalServer } from "../hooks/useStaticServer";
 import {
   Header,
   Icon,
-  ListItem,
   Text,
   Input,
   Button,
-  Tooltip
 } from "react-native-elements";
 import * as Animatable from "react-native-animatable";
 import {
-  FileFromDir,
-  FileIndex,
   FileWithContent,
-  isDirectory
 } from "../repositories/filesRepository";
 import { useOnMount } from "../hooks/useOnMount";
-
-type ListViewItem = FileFromDir & {
-  depth: number;
-  hiddenItemProps?: HiddenItemProps;
-};
-
-interface HiddenItemProps {
-  onDeleteItem(item: FileWithContent): void;
-  onRenameItem?(item: FileWithContent): void;
-}
-
-interface HiddenItem {
-  item: FileWithContent;
-  hiddenItemProps: HiddenItemProps;
-}
-
-const HiddenItem = (props: HiddenItem) => {
-  const { item, hiddenItemProps } = props;
-  const [showTooltip, setShowTooltip] = useState(false);
-
-  const ref = useRef<Tooltip>();
-
-  const showTooltip = () => {
-    if (ref.current) {
-      const state = ref.current.state;
-      ref.current.setState({
-        ...state,
-        isVisible: true
-      });
-    }
-  };
-
-  const onDeleteItem = () => {
-    hiddenItemProps.onDeleteItem(item);
-
-    if (ref.current) {
-      const state = ref.current.state;
-      ref.current.setState({
-        ...state,
-        isVisible: false
-      });
-    }
-  };
-
-  return (
-    <View style={styles.rowBack}>
-      <Tooltip
-        ref={ref}
-        withOverlay={false}
-        popover={<Text onPress={onDeleteItem}>Delete</Text>}
-      >
-        <TouchableHighlight onPress={showTooltip}>
-          <Text>Delete</Text>
-        </TouchableHighlight>
-      </Tooltip>
-      <TouchableHighlight
-        onPress={() =>
-          hiddenItemProps.onRenameItem && hiddenItemProps.onRenameItem(item)
-        }
-      >
-        <Text>Rename</Text>
-      </TouchableHighlight>
-    </View>
-  );
-};
+import {Directory} from "./Directory";
 
 export const Main = () => {
   const {
     setCurrentWorkingFile,
     currentWorkingFile,
-    files,
-    deleteFile,
     updateFilename,
-    newFolder,
-    toggleFolderOpen,
-    loadFileFromCache
+    loadFileFromCache,
+    deleteFile
   } = useContext(FilesContext);
   const [state, dispatch] = useReducer(editorUiReducer, editorUiInitialState);
   const { uri } = useLocalServer();
@@ -147,9 +72,16 @@ export const Main = () => {
     dispatch
   });
 
+  const onDeleteItem = async (item: FileWithContent) => {
+    await deleteFile(item);
+
+    if (item.path === (currentWorkingFile && currentWorkingFile.path)) {
+      await onNewFile();
+    }
+  };
+
   const [isEditingFilename, setIsEditingFilename] = useState(false);
   const [newFilename, setNewFilename] = useState("");
-  const [newFolderPath, setNewFolderPath] = useState("");
 
   const onShowEditorOnly = () => {
     dispatch({ type: EditorUiTypes.SHOW_EDITOR_ONLY });
@@ -172,13 +104,6 @@ export const Main = () => {
     sendToEditor(AppToHtml.UPDATE_EDITOR_VALUE, file.content);
   };
 
-  const onDeleteItem = async (item: FileWithContent) => {
-    await deleteFile(item);
-
-    if (item.path === (currentWorkingFile && currentWorkingFile.path)) {
-      await onNewFile();
-    }
-  };
 
   const onAppLoad = async () => {
     const cachedEditorState = await getEditorCache();
@@ -202,60 +127,6 @@ export const Main = () => {
     return filepathSegments[filepathSegments.length - 1];
   };
 
-  const getListItemProps = (item: ListViewItem) => {
-    const fileOrFolderProps: Partial<ComponentProps<typeof ListItem>> = {};
-
-    const commonProps: Partial<ComponentProps<typeof ListItem>> = {
-      containerStyle: {
-        marginLeft: item.depth * 10
-      }
-    };
-
-    if (isDirectory(item)) {
-      fileOrFolderProps.chevron = true;
-      fileOrFolderProps.leftIcon = <Icon name="folder" />;
-      fileOrFolderProps.onPress = () => toggleFolderOpen(item);
-    } else if (item.isFile()) {
-      fileOrFolderProps.leftIcon = <Icon type="font-awesome" name="file" />;
-      fileOrFolderProps.onPress = () => onGetFileContents(item);
-    }
-
-    return {
-      ...commonProps,
-      ...fileOrFolderProps
-    };
-  };
-
-  const getNameFromFilePath = (filepath: string) => {
-    const fileChunks = filepath.split("/");
-
-    return fileChunks[fileChunks.length - 1];
-  };
-
-  const renderFile = ({
-    item
-  }: {
-    item: ListViewItem;
-    index: number;
-    separators: any;
-  }) => {
-    return (
-      <ListItem
-        title={getNameFromFilePath(item.path)}
-        {...getListItemProps(item)}
-      />
-    );
-  };
-
-  const renderHiddenItem = ({ item }: { item: FileWithContent }) => {
-    const hiddenItemProps = {
-      onDeleteItem,
-      onRenameItem: () => console.log("rename me")
-    };
-
-    return <HiddenItem item={item} hiddenItemProps={hiddenItemProps} />;
-  };
-
   useEffect(() => {
     const handleAppStateChange = (nextAppState: AppStateStatus) => {
       if (nextAppState === "inactive") {
@@ -275,34 +146,7 @@ export const Main = () => {
     return () => AppState.removeEventListener("change", handleAppStateChange);
   });
 
-  const transformFileIndexToArrayLike = (
-    filesToTransform?: FileIndex,
-    depth: number = 0
-  ) => {
-    const transformedFiles: ListViewItem[] = [];
 
-    if (!filesToTransform) {
-      return [];
-    }
-
-    Object.keys(filesToTransform).forEach(key => {
-      transformedFiles.push({
-        ...filesToTransform[key],
-        depth
-      });
-
-      if (filesToTransform[key].files && filesToTransform[key].open) {
-        transformedFiles.push(
-          ...transformFileIndexToArrayLike(
-            filesToTransform[key].files,
-            depth + 1
-          )
-        );
-      }
-    });
-
-    return transformedFiles;
-  };
 
   const isPreviewOnly = state.showMarkdownPreview && !state.showEditor;
   const isBoth = state.showMarkdownPreview && state.showEditor;
@@ -337,29 +181,12 @@ export const Main = () => {
   return (
     <View style={styles.container}>
       {state.showDirectory && (
-        <View style={styles.directoryList}>
-          <Header
-            backgroundColor={"lavender"}
-            centerComponent={<Text h2={true}>Files</Text>}
-            rightComponent={<Icon name={"files-o"} />}
-          />
-          <View>
-            <Input value={newFolderPath} onChangeText={setNewFolderPath} />
-            <Button onPress={() => newFolder(newFolderPath)} title={"Submit"} />
-          </View>
-          <SwipeListView
-            keyExtractor={(item, index) => index.toString()}
-            data={transformFileIndexToArrayLike(files)}
-            renderItem={renderFile}
-            renderHiddenItem={renderHiddenItem}
-            rightOpenValue={-150}
-            leftOpenValue={75}
-            stopRightSwipe={-225}
-            stopLeftSwipe={1}
-            closeOnScroll={true}
-            closeOnRowPress={true}
-          />
-        </View>
+        <Directory
+            viewProps={{ style: styles.directoryList }}
+            onDeleteFile={onDeleteItem}
+            onRenameItem={() => console.log('hey')}
+            onClickFile={onGetFileContents}
+        />
       )}
       <View style={styles.editorContainer}>
         <Header
@@ -440,13 +267,15 @@ export const Main = () => {
             }
           >
             <ScrollView>
-              <Markdown
-                style={
-                  state.showMarkdownPreview ? markdownStyles : { padding: 0 }
-                }
-              >
-                {value}
-              </Markdown>
+              {state.showMarkdownPreview ?
+                  <Markdown
+                      style={markdownStyles}
+                  >
+                    {value}
+                  </Markdown>
+                  :
+                  <View/>
+              }
             </ScrollView>
           </Animatable.View>
         </View>
@@ -523,22 +352,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "center",
     marginRight: 50
-  },
-  rowFront: {
-    alignItems: "center",
-    backgroundColor: "#CCC",
-    borderBottomColor: "black",
-    borderBottomWidth: 1,
-    justifyContent: "center",
-    height: 50
-  },
-  rowBack: {
-    alignItems: "center",
-    backgroundColor: "#DDD",
-    flex: 1,
-    flexDirection: "row",
-    justifyContent: "flex-end",
-    paddingRight: 15
   },
   icon: {
     marginRight: 12,

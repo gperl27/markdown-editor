@@ -1,11 +1,12 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { LocalStaticServer } from "../lib/localStaticServer";
+import {useOnMount} from "./useOnMount";
 
 export const useLocalServer = () => {
   const [uri, setUri] = useState<string | undefined>(undefined);
   const server = new LocalStaticServer();
 
-  useEffect(() => {
+  useOnMount(() => {
     server
       .run()
       .then((url: string) => setUri(url))
@@ -14,7 +15,7 @@ export const useLocalServer = () => {
       });
 
     return () => server.stop();
-  }, [server]);
+  });
 
   return {
     uri,
