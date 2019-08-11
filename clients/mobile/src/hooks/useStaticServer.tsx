@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { LocalStaticServer } from "../lib/localStaticServer";
-import {useOnMount} from "./useOnMount";
+import { useOnMount } from "./useOnMount";
 
 export const useLocalServer = () => {
   const [uri, setUri] = useState<string | undefined>(undefined);

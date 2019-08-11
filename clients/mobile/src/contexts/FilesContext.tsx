@@ -5,7 +5,8 @@ import {
   isDirectory,
   FileIndex,
   FileWithContent,
-  Folder, FileFromDir
+  Folder,
+  FileFromDir
 } from "../repositories/filesRepository";
 import { useOnMount } from "../hooks/useOnMount";
 import { useDebouncedCallback } from "use-debounce";
@@ -29,7 +30,11 @@ interface State {
   newFolder: (folderName: string) => void;
   toggleFolderOpen: (folder: Folder) => void;
   loadFile: (path: FileWithContent) => void;
-  showFileChangeForm: (item: any, type: FileType) => void;
+  showFileChangeForm: (
+    item?: FileFromDir,
+    refItem?: FileFromDir,
+    type?: FileType
+  ) => void;
   filenameChangeItem?: FileFromDir;
   filenameType?: FileType;
 }
@@ -60,10 +65,16 @@ export const FilesProvider = (props: Props) => {
   >(undefined);
   const [files, setFiles] = useState<FileIndex | undefined>(undefined);
   const [isEditingFilename, setIsEditingFilename] = useState(false);
-  const [filenameChangeItem, setFilenameChangeItem] = useState<FileFromDir | undefined>(undefined);
-  const [filenameType, setFilenameType] = useState<FileType | undefined>(undefined);
+  const [filenameChangeItem, setFilenameChangeItem] = useState<
+    FileFromDir | undefined
+  >(undefined);
+  const [filenameType, setFilenameType] = useState<FileType | undefined>(
+    undefined
+  );
   const [newFilename, setNewFilename] = useState("");
-
+  const [filenameRefItem, setFilenameRefItem] = useState<
+    FileFromDir | undefined
+  >(undefined);
 
   const [autoSaveOnChange] = useDebouncedCallback(newFiles => {
     filesRepository
@@ -191,8 +202,13 @@ export const FilesProvider = (props: Props) => {
     });
   };
 
-  const showFileChangeForm = (item?: FileFromDir, type?: FileType) => {
+  const showFileChangeForm = (
+    item?: FileFromDir,
+    refItem?: FileFromDir,
+    type?: FileType
+  ) => {
     setFilenameChangeItem(item);
+    setFilenameRefItem(refItem);
     setFilenameType(type);
 
     if (item) {
@@ -200,35 +216,53 @@ export const FilesProvider = (props: Props) => {
     }
 
     setIsEditingFilename(true);
-  }
+  };
 
   const getProperFilenameFromItem = (filename: string, item?: FileFromDir) => {
     if (!item) {
       return filename;
     }
 
-    return filesRepository.createPathFromFile(item) + `/${filename}`;
-  }
+    console.log(item, 'GET PROPER FILENAME')
 
-  const getPropsForFilenameDialog = (rootItem?: FileFromDir, type: FileType = "file") => {
-    let props: { noun?: string, onSubmit?: (filename: string) => void} = {};
+    return filesRepository.createPathFromFile(item) + `/${filename}`;
+  };
+
+  const getPropsForFilenameDialog = (
+    item?: FileFromDir,
+    rootItem?: FileFromDir,
+    type: FileType = "file"
+  ) => {
+    let props: { noun?: string; onSubmit?: (filename: string) => void } = {};
+
+    console.log(item, rootItem, type, "GET PROPS");
 
     if (type === "file") {
-     props.title = rootItem ? `Rename file ${rootItem.name} to `: "New file";
-     props.onSubmit = async () => {
-       console.log(newFilename, 'SUBMIT FILENAME')
-       await updateFilename(getProperFilenameFromItem(newFilename))
-     }
-    } else {
-      props.title = rootItem ? `Rename folder ${rootItem.name} to `: "New folder";
+      props.title = item ? `Rename file ${item.name} to ` : "New file";
       props.onSubmit = async () => {
-        console.log(newFilename, 'SUBMIT NEW FOLDERNAME')
-       await newFolder(getProperFilenameFromItem(newFilename))
-      }
+        console.log(newFilename, "SUBMIT FILENAME");
+        await updateFilename(getProperFilenameFromItem(newFilename, rootItem));
+        setIsEditingFilename(false);
+      };
+    } else {
+      props.title = item
+        ? `Rename folder ${item.name} to `
+        : "New folder";
+      props.onSubmit = async () => {
+        console.log(newFilename, "SUBMIT NEW FOLDERNAME");
+        await newFolder(getProperFilenameFromItem(newFilename, rootItem));
+        setIsEditingFilename(false);
+      };
     }
 
     return props;
-  }
+  };
+
+  const resetChangeFileForm = () => {
+    setNewFilename("");
+    setFilenameChangeItem(undefined);
+    setFilenameType(undefined);
+  };
 
   useOnMount(() => {
     filesRepository
@@ -251,22 +285,42 @@ export const FilesProvider = (props: Props) => {
         toggleFolderOpen,
         loadFile,
         isEditingFilename,
-        showFileChangeForm,
+        showFileChangeForm
       }}
     >
       {props.children}
-      <Dialog.Container visible={isEditingFilename}>
-        <Dialog.Title>{getPropsForFilenameDialog(filenameChangeItem, filenameType).title}</Dialog.Title>
+      <Dialog.Container
+        onModalHide={resetChangeFileForm}
+        visible={isEditingFilename}
+      >
+        <Dialog.Title>
+          {
+            getPropsForFilenameDialog(
+              filenameChangeItem,
+              filenameRefItem,
+              filenameType
+            ).title
+          }
+        </Dialog.Title>
         <Dialog.Input
-            value={newFilename}
-            onChangeText={setNewFilename}
-            placeholder={"Enter Filename"} />
-        <Dialog.Button onPress={() => {
-          setIsEditingFilename(false)
-          setFilenameChangeItem(undefined);
-          setFilenameType(undefined);
-        }} label="Cancel" />
-        <Dialog.Button onPress={getPropsForFilenameDialog(filenameChangeItem, filenameType).onSubmit} label="Submit" />
+          value={newFilename}
+          onChangeText={setNewFilename}
+          placeholder={"Enter Filename"}
+        />
+        <Dialog.Button
+          onPress={() => setIsEditingFilename(false)}
+          label="Cancel"
+        />
+        <Dialog.Button
+          onPress={
+            getPropsForFilenameDialog(
+              filenameChangeItem,
+              filenameRefItem,
+              filenameType
+            ).onSubmit
+          }
+          label="Submit"
+        />
       </Dialog.Container>
     </FilesContext.Provider>
   );

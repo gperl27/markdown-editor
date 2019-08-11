@@ -2,13 +2,17 @@ import React, { useState } from "react";
 import { StyleSheet, TouchableHighlight, View } from "react-native";
 import Tooltip from "react-native-walkthrough-tooltip";
 import { Button, Text } from "react-native-elements";
-import { FileWithContent } from "../repositories/filesRepository";
-import {FileType} from "../contexts/FilesContext";
+import { FileFromDir, FileWithContent } from "../repositories/filesRepository";
+import { FileType } from "../contexts/FilesContext";
 
 export interface HiddenItemProps {
   onDeleteItem(item: FileWithContent): void;
   onRenameItem?(item: FileWithContent): void;
-  onNewFile?(item: FileWithContent, type: FileType): void;
+  onNewFile?(
+    item?: FileFromDir,
+    referenceItem?: FileFromDir,
+    type?: FileType
+  ): void;
 }
 
 export interface HiddenItem {
@@ -26,37 +30,59 @@ export const HiddenItem = (props: HiddenItem) => {
   };
 
   const onNewFile = (type: FileType) => {
-      console.log(type, "OMG TYPE")
-      setShowTooltip(false);
+    console.log(type, "OMG TYPE");
+    console.log(item)
+    setShowTooltip(false);
 
-      hiddenItemProps.onNewFile && hiddenItemProps.onNewFile(item, type);
-  }
+    hiddenItemProps.onNewFile &&
+      hiddenItemProps.onNewFile(undefined, item, type);
+  };
 
   return (
     <View style={styles.rowBack}>
       <Tooltip
-          animated
-          isVisible={showTooltip}
-          tooltipStyle={{ padding: 0, margin: 0 }}
-          contentStyle={{ padding: 0, backgroundColor: "red" }}
-          content={
-            <View style={{ flexDirection: "row", width: 150, alignContent: "center", justifyContent: "space-evenly" }}>
-              <Button type={"solid"} containerStyle={{ flex: 1 }} onPress={() => onNewFile("file")} title={"File"} />
-              <Button type={"solid"} containerStyle={{ flex: 1 }} onPress={() => onNewFile("folder")} title={"Folder"} />
-            </View>
-          }
-          placement="top"
-          onClose={() => setShowTooltip(false)}
+        animated
+        isVisible={showTooltip}
+        tooltipStyle={{ padding: 0, margin: 0 }}
+        contentStyle={{ padding: 0, backgroundColor: "red" }}
+        content={
+          <View
+            style={{
+              flexDirection: "row",
+              width: 150,
+              alignContent: "center",
+              justifyContent: "space-evenly"
+            }}
+          >
+            <Button
+              type={"solid"}
+              containerStyle={{ flex: 1 }}
+              onPress={() => onNewFile("file")}
+              title={"File"}
+            />
+            <Button
+              type={"solid"}
+              containerStyle={{ flex: 1 }}
+              onPress={() => onNewFile("folder")}
+              title={"Folder"}
+            />
+          </View>
+        }
+        placement="top"
+        onClose={() => setShowTooltip(false)}
       >
-        <TouchableHighlight style={{ backgroundColor: "blue"}} onPress={() => setShowTooltip(true)}>
+        <TouchableHighlight
+          style={{ backgroundColor: "blue" }}
+          onPress={() => setShowTooltip(true)}
+        >
           <Text>New</Text>
         </TouchableHighlight>
       </Tooltip>
       <TouchableHighlight
-          style={{ backgroundColor: "yellow" }}
-          onPress={() =>
-              hiddenItemProps.onRenameItem && hiddenItemProps.onRenameItem(item)
-          }
+        style={{ backgroundColor: "yellow" }}
+        onPress={() =>
+          hiddenItemProps.onRenameItem && hiddenItemProps.onRenameItem(item)
+        }
       >
         <Text>Edit</Text>
       </TouchableHighlight>

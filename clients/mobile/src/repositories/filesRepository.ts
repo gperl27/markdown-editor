@@ -51,11 +51,17 @@ export class FilesRepository implements FilesInterface {
   }
 
   createPathFromFile(file: FileFromDir) {
-    const paths = file.parentDir.split("Documents/");
-    let pathBuilder = this.defaultHomePath;
+    if (!file.path.includes("Documents/")) {
+      return "";
+    }
+
+    const paths = file.path.split("Documents/");
+    let pathBuilder = "";
     paths[1].split("/").forEach(dir => {
       pathBuilder += `/${dir}`;
     });
+
+    console.log(pathBuilder, "PATHBUILDER");
 
     return pathBuilder;
   }
@@ -165,7 +171,7 @@ export class FilesRepository implements FilesInterface {
   };
 
   async updateFilename(fileName: string, file?: FileFromDir) {
-    if (fileName.match(/\/|\.\w+/g)) {
+    if (fileName.match(/\.\w+/g)) {
       throw new Error("Invalid filename");
     }
 

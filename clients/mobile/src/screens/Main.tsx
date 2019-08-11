@@ -190,7 +190,11 @@ export const Main = () => {
           }
           centerComponent={
             <View>
-              <TouchableOpacity onPress={() => showFileChangeForm(currentWorkingFile, "file")}>
+              <TouchableOpacity
+                onPress={() =>
+                  showFileChangeForm(currentWorkingFile, undefined, "file")
+                }
+              >
                 <Text h2={true}>{getFileName()}</Text>
               </TouchableOpacity>
             </View>

@@ -68,7 +68,7 @@ export const Directory = (props: Props) => {
     const hiddenItemProps = {
       onDeleteItem: () => props.onDeleteFile(item),
       onRenameItem: () => console.log("rename me"),
-      onNewFile: (item, type) => showFileChangeForm(item, type)
+      onNewFile: (...args: any) => showFileChangeForm(...args)
     };
 
     return <HiddenItem item={item} hiddenItemProps={hiddenItemProps} />;
