@@ -45,9 +45,19 @@ export class FilesRepository implements FilesInterface {
   readonly defaultHomePath = RNFS.DocumentDirectoryPath;
 
   newFolder(folderName: string): Promise<void> {
-    const folder = RNFS.DocumentDirectoryPath + `/${folderName}`;
+    const folder = this.defaultHomePath + `/${folderName}`;
 
     return RNFS.mkdir(folder);
+  }
+
+  createPathFromFile(file: FileFromDir) {
+    const paths = file.parentDir.split("Documents/");
+    let pathBuilder = this.defaultHomePath;
+    paths[1].split("/").forEach(dir => {
+      pathBuilder += `/${dir}`;
+    });
+
+    return pathBuilder;
   }
 
   private getParentDirs(file: FileFromDir) {
@@ -56,7 +66,7 @@ export class FilesRepository implements FilesInterface {
     return paths[1].split("/").map(dir => {
       pathBuilder += `/${dir}`;
 
-      return RNFS.DocumentDirectoryPath + pathBuilder;
+      return this.defaultHomePath + pathBuilder;
     });
   }
 

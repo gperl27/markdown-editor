@@ -40,7 +40,7 @@ export const Main = () => {
     currentWorkingFile,
     loadFile,
     deleteFile,
-    setIsEditingFilename
+    showFileChangeForm
   } = useContext(FilesContext);
   const [state, dispatch] = useReducer(editorUiReducer, editorUiInitialState);
   const { uri } = useLocalServer();
@@ -190,7 +190,7 @@ export const Main = () => {
           }
           centerComponent={
             <View>
-              <TouchableOpacity onPress={() => setIsEditingFilename(true)}>
+              <TouchableOpacity onPress={() => showFileChangeForm(currentWorkingFile, "file")}>
                 <Text h2={true}>{getFileName()}</Text>
               </TouchableOpacity>
             </View>

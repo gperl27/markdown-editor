@@ -5,7 +5,7 @@ import {
   isDirectory,
   FileIndex,
   FileWithContent,
-  Folder
+  Folder, FileFromDir
 } from "../repositories/filesRepository";
 import { useOnMount } from "../hooks/useOnMount";
 import { useDebouncedCallback } from "use-debounce";
@@ -14,6 +14,8 @@ import Dialog from "react-native-dialog";
 interface Props {
   children: ReactNode;
 }
+
+export type FileType = "file" | "folder";
 
 interface State {
   files?: FileIndex;
@@ -27,7 +29,9 @@ interface State {
   newFolder: (folderName: string) => void;
   toggleFolderOpen: (folder: Folder) => void;
   loadFile: (path: FileWithContent) => void;
-  setIsEditingFilename: (toggle: boolean) => void;
+  showFileChangeForm: (item: any, type: FileType) => void;
+  filenameChangeItem?: FileFromDir;
+  filenameType?: FileType;
 }
 
 const defaultState: State = {
@@ -42,7 +46,7 @@ const defaultState: State = {
   newFolder: () => undefined,
   toggleFolderOpen: () => undefined,
   loadFile: () => undefined,
-  setIsEditingFilename: () => undefined
+  showFileChangeForm: () => undefined
 };
 
 const DEBOUNCE = 1000;
@@ -56,6 +60,11 @@ export const FilesProvider = (props: Props) => {
   >(undefined);
   const [files, setFiles] = useState<FileIndex | undefined>(undefined);
   const [isEditingFilename, setIsEditingFilename] = useState(false);
+  const [filenameChangeItem, setFilenameChangeItem] = useState<FileFromDir | undefined>(undefined);
+  const [filenameType, setFilenameType] = useState<FileType | undefined>(undefined);
+  const [newFilename, setNewFilename] = useState("");
+
+
   const [autoSaveOnChange] = useDebouncedCallback(newFiles => {
     filesRepository
       .syncFiles(newFiles)
@@ -182,9 +191,43 @@ export const FilesProvider = (props: Props) => {
     });
   };
 
-  const showFileChangeForm = (item, type) => {
+  const showFileChangeForm = (item?: FileFromDir, type?: FileType) => {
+    setFilenameChangeItem(item);
+    setFilenameType(type);
+
+    if (item) {
+      setNewFilename(item.name);
+    }
+
     setIsEditingFilename(true);
-    console.log(item, type);
+  }
+
+  const getProperFilenameFromItem = (filename: string, item?: FileFromDir) => {
+    if (!item) {
+      return filename;
+    }
+
+    return filesRepository.createPathFromFile(item) + `/${filename}`;
+  }
+
+  const getPropsForFilenameDialog = (rootItem?: FileFromDir, type: FileType = "file") => {
+    let props: { noun?: string, onSubmit?: (filename: string) => void} = {};
+
+    if (type === "file") {
+     props.title = rootItem ? `Rename file ${rootItem.name} to `: "New file";
+     props.onSubmit = async () => {
+       console.log(newFilename, 'SUBMIT FILENAME')
+       await updateFilename(getProperFilenameFromItem(newFilename))
+     }
+    } else {
+      props.title = rootItem ? `Rename folder ${rootItem.name} to `: "New folder";
+      props.onSubmit = async () => {
+        console.log(newFilename, 'SUBMIT NEW FOLDERNAME')
+       await newFolder(getProperFilenameFromItem(newFilename))
+      }
+    }
+
+    return props;
   }
 
   useOnMount(() => {
@@ -208,16 +251,22 @@ export const FilesProvider = (props: Props) => {
         toggleFolderOpen,
         loadFile,
         isEditingFilename,
-        setIsEditingFilename,
         showFileChangeForm,
       }}
     >
       {props.children}
       <Dialog.Container visible={isEditingFilename}>
-        <Dialog.Title>Rename file 'wetme' to</Dialog.Title>
-        <Dialog.Input placeholder={"Enter Filename"} />
-        <Dialog.Button onPress={() => setIsEditingFilename(false)} label="Cancel" />
-        <Dialog.Button onPress={() => console.log('hello world')} label="Submit" />
+        <Dialog.Title>{getPropsForFilenameDialog(filenameChangeItem, filenameType).title}</Dialog.Title>
+        <Dialog.Input
+            value={newFilename}
+            onChangeText={setNewFilename}
+            placeholder={"Enter Filename"} />
+        <Dialog.Button onPress={() => {
+          setIsEditingFilename(false)
+          setFilenameChangeItem(undefined);
+          setFilenameType(undefined);
+        }} label="Cancel" />
+        <Dialog.Button onPress={getPropsForFilenameDialog(filenameChangeItem, filenameType).onSubmit} label="Submit" />
       </Dialog.Container>
     </FilesContext.Provider>
   );

@@ -3,8 +3,7 @@ import { StyleSheet, TouchableHighlight, View } from "react-native";
 import Tooltip from "react-native-walkthrough-tooltip";
 import { Button, Text } from "react-native-elements";
 import { FileWithContent } from "../repositories/filesRepository";
-
-export type FileType = "file" | "folder";
+import {FileType} from "../contexts/FilesContext";
 
 export interface HiddenItemProps {
   onDeleteItem(item: FileWithContent): void;
