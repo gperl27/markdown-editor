@@ -62,12 +62,13 @@ const transformFileIndexToArrayLike = (
 };
 
 export const Directory = (props: Props) => {
-  const { files } = useContext(FilesContext);
+  const { files, showFileChangeForm } = useContext(FilesContext);
 
   const renderHiddenItem = ({ item }: { item: FileWithContent }) => {
     const hiddenItemProps = {
       onDeleteItem: () => props.onDeleteFile(item),
-      onRenameItem: () => console.log("rename me")
+      onRenameItem: () => console.log("rename me"),
+      onNewFile: (item, type) => showFileChangeForm(item, type)
     };
 
     return <HiddenItem item={item} hiddenItemProps={hiddenItemProps} />;

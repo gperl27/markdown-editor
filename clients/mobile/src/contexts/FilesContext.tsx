@@ -9,14 +9,11 @@ import {
 } from "../repositories/filesRepository";
 import { useOnMount } from "../hooks/useOnMount";
 import { useDebouncedCallback } from "use-debounce";
-import { ChangeFilename } from "../components/ChangeFilename";
-import { Overlay } from "react-native-elements";
+import Dialog from "react-native-dialog";
 
 interface Props {
   children: ReactNode;
 }
-
-const MODAL_RADIUS = 25;
 
 interface State {
   files?: FileIndex;
@@ -185,6 +182,11 @@ export const FilesProvider = (props: Props) => {
     });
   };
 
+  const showFileChangeForm = (item, type) => {
+    setIsEditingFilename(true);
+    console.log(item, type);
+  }
+
   useOnMount(() => {
     filesRepository
       .getAll()
@@ -206,24 +208,17 @@ export const FilesProvider = (props: Props) => {
         toggleFolderOpen,
         loadFile,
         isEditingFilename,
-        setIsEditingFilename
+        setIsEditingFilename,
+        showFileChangeForm,
       }}
     >
       {props.children}
-      <Overlay
-        animationType="fade"
-        height={"25%"}
-        width={"30%"}
-        borderRadius={MODAL_RADIUS}
-        overlayStyle={{ padding: 0, margin: 0 }}
-        isVisible={isEditingFilename}
-      >
-        <ChangeFilename
-          headerTopRadius={MODAL_RADIUS}
-          onCancel={() => setIsEditingFilename(false)}
-          onSubmit={(...args) => console.log(args, "submit me")}
-        />
-      </Overlay>
+      <Dialog.Container visible={isEditingFilename}>
+        <Dialog.Title>Rename file 'wetme' to</Dialog.Title>
+        <Dialog.Input placeholder={"Enter Filename"} />
+        <Dialog.Button onPress={() => setIsEditingFilename(false)} label="Cancel" />
+        <Dialog.Button onPress={() => console.log('hello world')} label="Submit" />
+      </Dialog.Container>
     </FilesContext.Provider>
   );
 };
