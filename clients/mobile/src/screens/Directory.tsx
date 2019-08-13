@@ -9,7 +9,7 @@ import {
   Folder,
   isDirectory
 } from "../repositories/filesRepository";
-import { FilesContext } from "../contexts/FilesContext";
+import { FilesContext, FileType } from "../contexts/FilesContext";
 import { HiddenItem, HiddenItemProps } from "../components/HiddenItem";
 import { FileListItem } from "../components/FileListItem";
 
@@ -20,10 +20,14 @@ export type ListViewItem = FileFromDir & {
 
 interface Props {
   viewProps: Partial<ComponentProps<typeof View>>;
-  onDeleteFile: (file: FileFromDir) => void;
-  onRenameItem: (file: FileFromDir) => void;
+  onDeleteItem?: (file: FileFromDir) => void;
   onClickFolder?: (file: Folder) => void;
   onClickFile?: (file: FileWithContent) => void;
+  onShowFileChangeForm?: (
+    file?: FileFromDir,
+    refItem?: FileFromDir,
+    type?: FileType
+  ) => void;
 }
 
 export interface ItemProps {
@@ -62,16 +66,35 @@ const transformFileIndexToArrayLike = (
 };
 
 export const Directory = (props: Props) => {
-  const { files, showFileChangeForm } = useContext(FilesContext);
+  const { files, showFileChangeForm, deleteFile } = useContext(FilesContext);
+
+  const onDeleteItem = (item: FileFromDir) => {
+    deleteFile(item);
+
+    props.onDeleteItem && props.onDeleteItem(item);
+  };
+
+  const onRenameItem = (item: FileFromDir) => {
+    showFileChangeForm(item);
+
+    props.onShowFileChangeForm && props.onShowFileChangeForm(item);
+  };
+
+  const onNewFile = (item: FileFromDir, type: FileType) => {
+    showFileChangeForm(undefined, item, type);
+
+    props.onShowFileChangeForm &&
+      props.onShowFileChangeForm(undefined, item, type);
+  };
 
   const renderHiddenItem = ({ item }: { item: FileWithContent }) => {
     const hiddenItemProps = {
-      onDeleteItem: () => props.onDeleteFile(item),
-      onRenameItem: () => console.log("rename me"),
-      onNewFile: (...args: any) => showFileChangeForm(...args)
+      onDeleteItem: () => onDeleteItem(item),
+      onRenameItem: () => onRenameItem(item),
+      onNewFile: (type: FileType) => onNewFile(item, type)
     };
 
-    return <HiddenItem item={item} hiddenItemProps={hiddenItemProps} />;
+    return <HiddenItem hiddenItemProps={hiddenItemProps} />;
   };
 
   const renderFile = (item: ItemProps) => {

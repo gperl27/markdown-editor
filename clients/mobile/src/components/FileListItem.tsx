@@ -1,9 +1,7 @@
-import React, { ComponentProps, useContext, useState } from "react";
-import Tooltip from "react-native-walkthrough-tooltip";
+import React, { ComponentProps, useContext } from "react";
 import { Icon, ListItem } from "react-native-elements";
 import { ItemProps, ListViewItem } from "../screens/Directory";
 import {
-  FileFromDir,
   FileWithContent,
   Folder,
   isDirectory
@@ -12,8 +10,6 @@ import { FilesContext } from "../contexts/FilesContext";
 
 interface Props {
   item: ItemProps;
-  onDeleteFile: (file: FileFromDir) => void;
-  onRenameItem: (file: FileFromDir) => void;
   onClickFolder?: (file: Folder) => void;
   onClickFile?: (file: FileWithContent) => void;
 }
@@ -25,8 +21,7 @@ const getNameFromFilePath = (filepath: string) => {
 };
 
 export const FileListItem = (props: Props) => {
-  const [showTooltip, setShowTooltip] = useState(false);
-  const { newFolder, toggleFolderOpen } = useContext(FilesContext);
+  const { toggleFolderOpen } = useContext(FilesContext);
 
   const getListItemProps = (item: ListViewItem) => {
     const fileOrFolderProps: Partial<ComponentProps<typeof ListItem>> = {};
@@ -35,6 +30,10 @@ export const FileListItem = (props: Props) => {
       containerStyle: {
         marginLeft: item.depth * 10
       }
+    };
+
+    const onClickFile = async () => {
+      props.onClickFile && props.onClickFile(item);
     };
 
     const onClickFolder = () => {
@@ -50,8 +49,7 @@ export const FileListItem = (props: Props) => {
       fileOrFolderProps.onLongPress = () => console.log("long press mate");
     } else if (item.isFile()) {
       fileOrFolderProps.leftIcon = <Icon type="font-awesome" name="file" />;
-      fileOrFolderProps.onPress = async () =>
-        props.onClickFile && (await props.onClickFile(item));
+      fileOrFolderProps.onPress = onClickFile;
       fileOrFolderProps.onLongPress = () => console.log("long press mate");
     }
 
@@ -62,11 +60,9 @@ export const FileListItem = (props: Props) => {
   };
 
   return (
-    <Tooltip isVisible={showTooltip}>
-      <ListItem
-        title={getNameFromFilePath(props.item.item.path)}
-        {...getListItemProps(props.item.item)}
-      />
-    </Tooltip>
+    <ListItem
+      title={getNameFromFilePath(props.item.item.path)}
+      {...getListItemProps(props.item.item)}
+    />
   );
 };

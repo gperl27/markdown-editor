@@ -39,7 +39,6 @@ export const Main = () => {
     setCurrentWorkingFile,
     currentWorkingFile,
     loadFile,
-    deleteFile,
     showFileChangeForm
   } = useContext(FilesContext);
   const [state, dispatch] = useReducer(editorUiReducer, editorUiInitialState);
@@ -61,14 +60,6 @@ export const Main = () => {
     onNewFile,
     dispatch
   });
-
-  const onDeleteItem = async (item: FileWithContent) => {
-    await deleteFile(item);
-
-    if (item.path === (currentWorkingFile && currentWorkingFile.path)) {
-      await onNewFile();
-    }
-  };
 
   const onShowEditorOnly = () => {
     dispatch({ type: EditorUiTypes.SHOW_EDITOR_ONLY });
@@ -170,8 +161,6 @@ export const Main = () => {
       {state.showDirectory && (
         <Directory
           viewProps={{ style: styles.directoryList }}
-          onDeleteFile={onDeleteItem}
-          onRenameItem={() => console.log("hey")}
           onClickFile={onGetFileContents}
         />
       )}
