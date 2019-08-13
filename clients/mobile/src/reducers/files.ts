@@ -43,6 +43,8 @@ export const filesReducer = (
   state: State,
   action: Action<FileTypes>
 ): State => {
+  console.log(state, action)
+
   switch (action.type) {
     case FileTypes.SET_FILES:
       return {

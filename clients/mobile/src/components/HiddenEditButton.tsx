@@ -11,6 +11,7 @@ export const HiddenEditButton = (props: Props) => {
   const [showTooltip, setShowTooltip] = useState(false);
 
   const onRenameItem = () => {
+    setShowTooltip(false);
     props.onRenameItem && props.onRenameItem();
   };
 

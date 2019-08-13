@@ -3,16 +3,19 @@ import { filesReducer, FileTypes, initialFileState } from "../reducers/files";
 import {
   FileFromDir,
   FileIndex,
-  useFilesRepository
-} from "../repositories/filesRepository";
+  FilesRepository, isFile,
+} from '../repositories/filesRepository';
 
 interface FileNameDialogOptions {
   onFileSubmit?: (filename: string) => void;
   onFolderSubmit?: (filename: string) => void;
 }
 
-export const useFiles = () => {
-  const filesRepository = useFilesRepository();
+interface Props extends FileNameDialogOptions {
+  filesRepository: FilesRepository;
+}
+
+export const useFiles = (props: Props) => {
   const [state, dispatch] = useReducer(filesReducer, initialFileState);
 
   const resetFilenameForm = () => {
@@ -35,7 +38,7 @@ export const useFiles = () => {
 
   const updateFilenameFormInput = (value: string) => {
     dispatch({
-      type: FileTypes.SET_CURRENT_WORKING_FILE,
+      type: FileTypes.SET_FILENAME_FORM,
       payload: {
         filenameInputValue: value
       }
@@ -47,11 +50,14 @@ export const useFiles = () => {
       return filename;
     }
 
-    return filesRepository.createPathFromFile(item) + `/${filename}`;
+    return props.filesRepository.createPathFromFile(item) + `/${filename}`;
   };
 
-  const getPropsForFilenameDialog = (options: FileNameDialogOptions) => {
-    let props: { title?: string; onSubmit?: () => void } = {};
+  const getPropsForFilenameDialog = () => {
+    const filenameProps: {
+      dialogTitle?: string;
+      dialogOnSubmit?: () => void;
+    } = {};
 
     const item = state.fileNameForm.filenameChangeItem;
 
@@ -61,9 +67,11 @@ export const useFiles = () => {
     );
 
     if (state.fileNameForm.filenameType === "file") {
-      props.title = item ? `Rename file ${item.name} to ` : "New file";
-      props.onSubmit = () => {
-        options.onFileSubmit && options.onFileSubmit(filename);
+      filenameProps.dialogTitle = item
+        ? `Rename file ${item.name} to `
+        : "New file";
+      filenameProps.dialogOnSubmit = () => {
+        props.onFileSubmit && props.onFileSubmit(filename);
         dispatch({
           type: FileTypes.SET_FILENAME_FORM,
           payload: {
@@ -72,18 +80,21 @@ export const useFiles = () => {
         });
       };
     } else {
-      props.title = item ? `Rename folder ${item.name} to ` : "New folder";
-      props.onSubmit = () =>
-        options.onFolderSubmit && options.onFolderSubmit(filename);
-      dispatch({
-        type: FileTypes.SET_FILENAME_FORM,
-        payload: {
-          isEditingFilename: false
-        }
-      });
+      filenameProps.dialogTitle = item
+        ? `Rename folder ${item.name} to `
+        : "New folder";
+      filenameProps.dialogOnSubmit = () => {
+        props.onFolderSubmit && props.onFolderSubmit(filename);
+        dispatch({
+          type: FileTypes.SET_FILENAME_FORM,
+          payload: {
+            isEditingFilename: false
+          }
+        });
+      };
     }
 
-    return props;
+    return filenameProps;
   };
 
   return {
@@ -93,6 +104,6 @@ export const useFiles = () => {
     setCurrentWorkingFile,
     resetFilenameForm,
     updateFilenameFormInput,
-    getPropsForFilenameDialog
+    ...getPropsForFilenameDialog()
   };
 };

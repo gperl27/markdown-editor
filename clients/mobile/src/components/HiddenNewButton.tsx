@@ -11,8 +11,10 @@ interface Props {
 export const HiddenNewButton = (props: Props) => {
   const [showTooltip, setShowTooltip] = useState(false);
 
-  const onNewFile = (type: FileType) =>
+  const onNewFile = (type: FileType) => {
+    setShowTooltip(false);
     props.onNewFile && props.onNewFile(type);
+  };
 
   return (
     <Tooltip

@@ -68,15 +68,12 @@ export const FilesProvider = (props: Props) => {
     setFiles,
     setCurrentWorkingFile,
     updateFilenameFormInput,
-    getPropsForFilenameDialog
-  } = useFiles();
-
-  const {
-    title = "New File",
-    onSubmit = () => undefined
-  } = getPropsForFilenameDialog({
-    onFolderSubmit: (filename: string) => newFolder(filename),
-    onFileSubmit: (filename: string) => updateFilename(filename)
+    dialogTitle = "New File",
+    dialogOnSubmit = () => undefined
+  } = useFiles({
+    filesRepository: filesRepository,
+    onFolderSubmit: async (filename: string) => await newFolder(filename),
+    onFileSubmit: async (filename: string) => await updateFilename(filename)
   });
 
   const [autoSaveOnChange] = useDebouncedCallback(newFiles => {
@@ -252,7 +249,7 @@ export const FilesProvider = (props: Props) => {
         onModalHide={resetFilenameForm}
         visible={fileNameForm.isEditingFilename}
       >
-        <Dialog.Title>{title}</Dialog.Title>
+        <Dialog.Title>{dialogTitle}</Dialog.Title>
         <Dialog.Input
           value={fileNameForm.filenameInputValue}
           onChangeText={updateFilenameFormInput}
@@ -267,7 +264,7 @@ export const FilesProvider = (props: Props) => {
           }
           label="Cancel"
         />
-        <Dialog.Button onPress={onSubmit} label="Submit" />
+        <Dialog.Button onPress={dialogOnSubmit} label="Submit" />
       </Dialog.Container>
     </FilesContext.Provider>
   );

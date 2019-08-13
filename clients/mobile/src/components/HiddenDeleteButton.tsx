@@ -11,6 +11,7 @@ export const HiddenDeleteButton = (props: Props) => {
   const [showTooltip, setShowTooltip] = useState(false);
 
   const onDeleteItem = () => {
+    setShowTooltip(false);
     props.onDeleteItem && props.onDeleteItem();
   };
 
