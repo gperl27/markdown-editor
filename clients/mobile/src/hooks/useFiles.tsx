@@ -3,8 +3,8 @@ import { filesReducer, FileTypes, initialFileState } from "../reducers/files";
 import {
   FileFromDir,
   FileIndex,
-  FilesRepository, isFile,
-} from '../repositories/filesRepository';
+  FilesRepository
+} from "../repositories/filesRepository";
 
 interface FileNameDialogOptions {
   onFileSubmit?: (filename: string) => void;

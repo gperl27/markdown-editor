@@ -50,20 +50,39 @@ export class FilesRepository implements FilesInterface {
     return RNFS.mkdir(folder);
   }
 
-  createPathFromFile(file: FileFromDir) {
-    if (!file.path.includes("Documents/")) {
-      return "";
-    }
-
+  private createPathFromFileForFolder(file: Folder) {
     const paths = file.path.split("Documents/");
     let pathBuilder = "";
     paths[1].split("/").forEach(dir => {
       pathBuilder += `/${dir}`;
     });
 
-    console.log(pathBuilder, "PATHBUILDER");
+    return pathBuilder;
+  }
+
+  private createPathFromFileForFile(file: FileWithContent) {
+    const paths = file.path.split("Documents/");
+    let pathBuilder = "";
+    const dirPaths = paths[1].split("/");
+    dirPaths.forEach((dir, index) => {
+      if (index !== dirPaths.length - 1) {
+        pathBuilder += `/${dir}`;
+      }
+    });
 
     return pathBuilder;
+  }
+
+  createPathFromFile(file: FileFromDir) {
+    if (!file.path.includes("Documents/")) {
+      return "";
+    }
+
+    if (isDirectory(file)) {
+      return this.createPathFromFileForFolder(file);
+    }
+
+    return this.createPathFromFileForFile(file);
   }
 
   private getParentDirs(file: FileFromDir) {
