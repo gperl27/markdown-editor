@@ -42,7 +42,7 @@ export const HiddenEditButton = (props: Props) => {
       onClose={() => setShowTooltip(false)}
     >
       <TouchableHighlight
-        style={{ backgroundColor: "yellow" }}
+        style={{ backgroundColor: "yellow", height: "100%", width: 50 }}
         onPress={() => setShowTooltip(true)}
       >
         <Text>Edit</Text>

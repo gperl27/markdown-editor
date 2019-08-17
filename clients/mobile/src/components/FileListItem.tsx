@@ -1,5 +1,5 @@
 import React, { ComponentProps, useContext } from "react";
-import { Icon, ListItem } from "react-native-elements";
+import { Icon, ListItem, Text } from "react-native-elements";
 import { ItemProps, ListViewItem } from "../screens/Directory";
 import {
   FileWithContent,
@@ -7,8 +7,9 @@ import {
   isDirectory
 } from "../repositories/filesRepository";
 import { FilesContext } from "../contexts/FilesContext";
+import { TouchableWithoutFeedback, View } from "react-native";
 
-interface Props {
+interface Props extends ComponentProps<typeof ListItem> {
   item: ItemProps;
   onClickFolder?: (file: Folder) => void;
   onClickFile?: (file: FileWithContent) => void;
@@ -28,7 +29,7 @@ export const FileListItem = (props: Props) => {
 
     const commonProps: Partial<ComponentProps<typeof ListItem>> = {
       containerStyle: {
-        marginLeft: item.depth * 10
+        marginLeft: item.depth * 42
       }
     };
 
@@ -46,11 +47,9 @@ export const FileListItem = (props: Props) => {
       fileOrFolderProps.chevron = true;
       fileOrFolderProps.leftIcon = <Icon name="folder" />;
       fileOrFolderProps.onPress = onClickFolder;
-      fileOrFolderProps.onLongPress = () => console.log("long press mate");
     } else if (item.isFile()) {
-      fileOrFolderProps.leftIcon = <Icon type="font-awesome" name="file" />;
+      fileOrFolderProps.leftIcon = <Icon name="file" />;
       fileOrFolderProps.onPress = onClickFile;
-      fileOrFolderProps.onLongPress = () => console.log("long press mate");
     }
 
     return {
@@ -59,10 +58,53 @@ export const FileListItem = (props: Props) => {
     };
   };
 
+  const itemProps = getListItemProps(props.item.item);
+
+  const getFolderArrow = () => {
+    if (
+      isDirectory(props.item.item) &&
+      Object.keys(props.item.item.files).length > 0
+    ) {
+      console.log(props.item.item);
+      const angle = props.item.item.open ? "angle-down" : "angle-right";
+
+      return (
+        <Icon containerStyle={{ marginRight: 5 }} size={24} name={angle} />
+      );
+    }
+
+    return null;
+  };
+
   return (
-    <ListItem
-      title={getNameFromFilePath(props.item.item.path)}
-      {...getListItemProps(props.item.item)}
-    />
+    <TouchableWithoutFeedback
+      onLongPress={props.onLongPress}
+      onPress={() => {
+        itemProps.onPress && itemProps.onPress();
+      }}
+      style={{
+        width: "100%"
+      }}
+    >
+      <View
+        style={[
+          {
+            flex: 1,
+            backgroundColor: "transparent",
+            width: "85%",
+            flexDirection: "row",
+            justifyContent: "flex-start",
+            alignItems: "center"
+          }
+        ]}
+      >
+        {getFolderArrow()}
+        {itemProps.leftIcon}
+        <Text style={{ marginLeft: 10 }}>
+          {getNameFromFilePath(props.item.item.path)}
+        </Text>
+        <View />
+      </View>
+    </TouchableWithoutFeedback>
   );
 };

@@ -1,5 +1,5 @@
-import React from "react";
-import { StyleSheet, View } from "react-native";
+import React, { ComponentProps } from "react";
+import { StyleSheet, View, ViewProps } from "react-native";
 import { FileType } from "../contexts/FilesContext";
 import { HiddenNewButton } from "./HiddenNewButton";
 import { HiddenDeleteButton } from "./HiddenDeleteButton";
@@ -11,7 +11,7 @@ export interface HiddenItemProps {
   onNewFile?(type: FileType): void;
 }
 
-export interface HiddenItem {
+export interface HiddenItem extends ViewProps {
   hiddenItemProps: HiddenItemProps;
 }
 
@@ -31,7 +31,7 @@ export const HiddenItem = (props: HiddenItem) => {
   };
 
   return (
-    <View style={styles.rowBack}>
+    <View {...props} style={[styles.container, props.style]}>
       <HiddenNewButton onNewFile={onNewFile} />
       <HiddenDeleteButton onDeleteItem={onDeleteItem} />
       <HiddenEditButton onRenameItem={onRenameFile} />
@@ -40,12 +40,9 @@ export const HiddenItem = (props: HiddenItem) => {
 };
 
 const styles = StyleSheet.create({
-  rowBack: {
+  container: {
     alignItems: "center",
-    backgroundColor: "#DDD",
-    flex: 1,
     flexDirection: "row",
-    justifyContent: "flex-end",
-    paddingRight: 15
+    justifyContent: "flex-end"
   }
 });

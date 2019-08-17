@@ -1,7 +1,8 @@
-import { View } from "react-native";
+import { View, StyleSheet, TouchableHighlight } from "react-native";
 import { Header, Icon, Text } from "react-native-elements";
-import { SwipeListView } from "react-native-swipe-list-view";
-import React, { ComponentProps, useContext } from "react";
+import { SwipeRow } from "react-native-swipe-list-view";
+import DraggableFlatList from "react-native-draggable-flatlist";
+import React, { ComponentProps, useContext, useState } from "react";
 import {
   FileFromDir,
   FileIndex,
@@ -67,6 +68,7 @@ const transformFileIndexToArrayLike = (
 
 export const Directory = (props: Props) => {
   const { files, showFileChangeForm, deleteFile } = useContext(FilesContext);
+  const [isSelecting, setIsSelecting] = useState(false);
 
   const onDeleteItem = (item: FileFromDir) => {
     deleteFile(item);
@@ -87,18 +89,44 @@ export const Directory = (props: Props) => {
       props.onShowFileChangeForm(undefined, item, type);
   };
 
-  const renderHiddenItem = ({ item }: { item: FileWithContent }) => {
+  const renderFile = (item: ItemProps) => {
     const hiddenItemProps = {
-      onDeleteItem: () => onDeleteItem(item),
-      onRenameItem: () => onRenameItem(item),
-      onNewFile: (type: FileType) => onNewFile(item, type)
+      onDeleteItem: () => onDeleteItem(item.item),
+      onRenameItem: () => onRenameItem(item.item),
+      onNewFile: (type: FileType) => onNewFile(item.item, type)
     };
 
-    return <HiddenItem hiddenItemProps={hiddenItemProps} />;
-  };
+    console.log(item.isActive, "IS ACTIVE");
 
-  const renderFile = (item: ItemProps) => {
-    return <FileListItem item={item} {...props} />;
+    return (
+      <SwipeRow
+        rightOpenValue={-150}
+        leftOpenValue={75}
+        stopRightSwipe={-225}
+        stopLeftSwipe={1}
+        closeOnRowPress={true}
+      >
+        <HiddenItem
+          style={styles.standaloneRowBack}
+          hiddenItemProps={hiddenItemProps}
+        />
+        <TouchableHighlight
+          style={[
+            styles.standaloneRowFront,
+            { backgroundColor: item.isActive ? "pink" : "white" }
+          ]}
+          onLongPress={item.move}
+          onPressOut={item.moveEnd}
+        >
+          <FileListItem
+            item={item}
+            onLongPress={item.move}
+            onClickFile={props.onClickFile}
+            onClickFolder={props.onClickFolder}
+          />
+        </TouchableHighlight>
+      </SwipeRow>
+    );
   };
 
   return (
@@ -106,20 +134,33 @@ export const Directory = (props: Props) => {
       <Header
         backgroundColor={"lavender"}
         centerComponent={<Text h2={true}>Files</Text>}
-        rightComponent={<Icon name={"files-o"} />}
+        rightComponent={
+          <Icon onPress={() => setIsSelecting(true)} name={"files-o"} />
+        }
       />
-      <SwipeListView
-        keyExtractor={(item, index) => index.toString()}
+      <DraggableFlatList
         data={transformFileIndexToArrayLike(files)}
         renderItem={renderFile}
-        renderHiddenItem={renderHiddenItem}
-        rightOpenValue={-150}
-        leftOpenValue={75}
-        stopRightSwipe={-225}
-        stopLeftSwipe={1}
-        closeOnScroll={true}
-        closeOnRowPress={true}
+        keyExtractor={(item, index) => index.toString()}
+        scrollPercent={5}
+        onMoveEnd={data => {
+          console.log(data, "ON MOVE END - call move file");
+        }}
       />
     </View>
   );
 };
+
+const styles = StyleSheet.create({
+  standaloneRowFront: {
+    alignItems: "center",
+    backgroundColor: "white",
+    justifyContent: "center",
+    flex: 1,
+    height: 50
+  },
+  standaloneRowBack: {
+    flex: 1,
+    height: 50
+  }
+});

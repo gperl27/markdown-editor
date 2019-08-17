@@ -1,4 +1,6 @@
 import { iOSUIKit } from "react-native-typography";
+import { colors } from "react-native-elements";
+import { Platform } from "react-native";
 
 interface StyleObject {
   fontSize?: number;

@@ -49,7 +49,7 @@ export const HiddenNewButton = (props: Props) => {
       onClose={() => setShowTooltip(false)}
     >
       <TouchableHighlight
-        style={{ backgroundColor: "blue" }}
+        style={{ backgroundColor: "blue", height: '100%', width: 50 }}
         onPress={() => setShowTooltip(true)}
       >
         <Text>New</Text>

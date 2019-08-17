@@ -28,7 +28,7 @@ export const HiddenDeleteButton = (props: Props) => {
       onClose={() => setShowTooltip(false)}
     >
       <TouchableHighlight
-        style={{ backgroundColor: "red" }}
+        style={{ backgroundColor: "red",height: '100%', width: 50 }}
         onPress={() => setShowTooltip(true)}
       >
         <Text>Delete</Text>
